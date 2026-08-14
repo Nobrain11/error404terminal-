@@ -49,9 +49,7 @@ export function decryptPhrase(encrypted: string): string {
 }
 
 export async function createWallet(userId: number): Promise<{ address: string; privateKey: string; mnemonic?: string }> {
-  // Generate a random HD wallet
   const hdWallet = ethers.Wallet.createRandom();
-  // Use its private key to create a standard Wallet (to avoid type issues)
   const wallet = new ethers.Wallet(hdWallet.privateKey);
   const address = wallet.address;
   const privateKey = wallet.privateKey;
@@ -77,12 +75,10 @@ export async function importWallet(userId: number, privateKeyOrPhrase: string): 
   let mnemonic: string | undefined;
 
   if (privateKeyOrPhrase.split(' ').length >= 12) {
-    // It's a mnemonic phrase
     const hdWallet = ethers.HDNodeWallet.fromPhrase(privateKeyOrPhrase);
     wallet = new ethers.Wallet(hdWallet.privateKey);
     mnemonic = privateKeyOrPhrase;
   } else {
-    // It's a private key
     wallet = new ethers.Wallet(privateKeyOrPhrase);
   }
 
@@ -121,8 +117,40 @@ export async function getDecryptedPhrase(userId: number): Promise<string | null>
   return decryptPhrase(wallet.encryptedPhrase);
 }
 
+// --- Provider caching and error handling ---
+let cachedProvider: ethers.JsonRpcProvider | null = null;
+let providerErrorLogged = false;
+
+function getProvider(): ethers.JsonRpcProvider {
+  if (!cachedProvider) {
+    const url = process.env.NEXT_PUBLIC_RPC_URL || 'http://rpc.robinhoodchain.com'; // try HTTP if HTTPS fails
+    try {
+      cachedProvider = new ethers.JsonRpcProvider(url, undefined, {
+        staticNetwork: true,
+      });
+    } catch (e) {
+      if (!providerErrorLogged) {
+        console.error('Failed to create RPC provider:', e);
+        providerErrorLogged = true;
+      }
+      // Return a dummy provider that will fail gracefully
+      cachedProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+    }
+  }
+  return cachedProvider;
+}
+
 export async function getEthBalance(address: string): Promise<string> {
-  const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL!);
-  const balance = await provider.getBalance(address);
-  return ethers.formatEther(balance);
+  try {
+    const provider = getProvider();
+    const balance = await provider.getBalance(address);
+    return ethers.formatEther(balance);
+  } catch (error) {
+    // Only log once
+    if (!providerErrorLogged) {
+      console.error('Failed to fetch ETH balance:', error);
+      providerErrorLogged = true;
+    }
+    return '0'; // fallback so the bot doesn't break
+  }
 }
