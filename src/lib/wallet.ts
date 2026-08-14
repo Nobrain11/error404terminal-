@@ -2,10 +2,9 @@ import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { prisma } from './prisma';
 
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY!; // 32 bytes hex or base64
+const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY!;
 const ALGORITHM = 'aes-256-gcm';
 
-// Derive key from hex or base64
 function getKey(): Buffer {
   if (ENCRYPTION_KEY.length === 64) {
     return Buffer.from(ENCRYPTION_KEY, 'hex');
@@ -50,10 +49,13 @@ export function decryptPhrase(encrypted: string): string {
 }
 
 export async function createWallet(userId: number): Promise<{ address: string; privateKey: string; mnemonic?: string }> {
-  const wallet = ethers.Wallet.createRandom();
+  // Generate a random HD wallet
+  const hdWallet = ethers.Wallet.createRandom();
+  // Use its private key to create a standard Wallet (to avoid type issues)
+  const wallet = new ethers.Wallet(hdWallet.privateKey);
   const address = wallet.address;
   const privateKey = wallet.privateKey;
-  const mnemonic = wallet.mnemonic?.phrase;
+  const mnemonic = hdWallet.mnemonic?.phrase;
 
   const encryptedKey = encryptPrivateKey(privateKey);
   const encryptedPhrase = mnemonic ? encryptPhrase(mnemonic) : null;
@@ -67,20 +69,23 @@ export async function createWallet(userId: number): Promise<{ address: string; p
     },
   });
 
-  // Also create a portfolio entry for this wallet? Not needed now.
   return { address, privateKey, mnemonic };
 }
 
 export async function importWallet(userId: number, privateKeyOrPhrase: string): Promise<{ address: string; privateKey: string; mnemonic?: string }> {
   let wallet: ethers.Wallet;
   let mnemonic: string | undefined;
-  // Check if it's a mnemonic (12 or 24 words)
+
   if (privateKeyOrPhrase.split(' ').length >= 12) {
-    wallet = ethers.Wallet.fromPhrase(privateKeyOrPhrase);
+    // It's a mnemonic phrase
+    const hdWallet = ethers.HDNodeWallet.fromPhrase(privateKeyOrPhrase);
+    wallet = new ethers.Wallet(hdWallet.privateKey);
     mnemonic = privateKeyOrPhrase;
   } else {
+    // It's a private key
     wallet = new ethers.Wallet(privateKeyOrPhrase);
   }
+
   const address = wallet.address;
   const privateKey = wallet.privateKey;
 
@@ -116,7 +121,6 @@ export async function getDecryptedPhrase(userId: number): Promise<string | null>
   return decryptPhrase(wallet.encryptedPhrase);
 }
 
-// Utility: get ETH balance from RPC
 export async function getEthBalance(address: string): Promise<string> {
   const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL!);
   const balance = await provider.getBalance(address);
