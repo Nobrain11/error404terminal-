@@ -22,18 +22,19 @@ model User {
   referral        Referral?
   watchedTokens   Watchlist[]
   alerts          Alert[]
+  portfolios      Portfolio[]
 }
 
 model Wallet {
-  id             Int       @id @default(autoincrement())
-  userId         Int
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  address        String    @unique
-  encryptedKey   String    // AES-256-GCM encrypted private key (hex)
-  encryptedPhrase String?  // AES-256-GCM encrypted mnemonic (hex)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  transactions   Transaction[]
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address         String    @unique
+  encryptedKey    String
+  encryptedPhrase String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  transactions    Transaction[]
 }
 
 model Session {
@@ -49,7 +50,7 @@ model LoginCode {
   id          Int       @id @default(autoincrement())
   code        String    @unique
   telegramId  String
-  userId      Int?      // optional, set when used
+  userId      Int?
   user        User?     @relation(fields: [userId], references: [id])
   used        Boolean   @default(false)
   expiresAt   DateTime
@@ -61,10 +62,10 @@ model Transaction {
   walletId        Int
   wallet          Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
   txHash          String
-  type            String    // "buy", "sell", "transfer"
+  type            String
   tokenCa         String?
-  amount          String?   // decimal string
-  price           String?   // decimal string
+  amount          String?
+  price           String?
   usdValue        String?
   blockNumber     Int?
   timestamp       DateTime
@@ -76,8 +77,8 @@ model Portfolio {
   userId      Int
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenCa     String
-  amount      String    // decimal string
-  usdValue    String?   // decimal string
+  amount      String
+  usdValue    String?
   updatedAt   DateTime  @updatedAt
 }
 
@@ -86,8 +87,8 @@ model Alert {
   userId      Int
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenCa     String
-  targetPrice String    // decimal string
-  direction   String    // "above", "below"
+  targetPrice String
+  direction   String
   triggered   Boolean   @default(false)
   createdAt   DateTime  @default(now())
 }
@@ -105,7 +106,7 @@ model Settings {
   userId      Int       @unique
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   slippage    Float     @default(0.5)
-  gasLimit    Int?      // custom gas limit
+  gasLimit    Int?
   notifications Boolean @default(true)
   updatedAt   DateTime  @updatedAt
 }
@@ -115,16 +116,15 @@ model Referral {
   userId      Int       @unique
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   code        String    @unique
-  referredBy  Int?      // userId of referrer
+  referredBy  Int?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
 
-// Market data support models
 model PriceSnapshot {
   id          Int       @id @default(autoincrement())
   tokenCa     String
-  price       String    // decimal string
+  price       String
   timestamp   DateTime  @default(now())
   @@index([tokenCa, timestamp])
 }
@@ -138,10 +138,10 @@ model SwapEvent {
   blockNumber Int
   timestamp   DateTime
   isBuy       Boolean
-  rawRatio    String    // raw on-chain price ratio (e.g., token/ETH)
-  ourAmount   String    // amount of tokenCa in base units
-  otherAmount String    // amount of paired token (ETH/WETH)
-  usdNormalizedPrice String? // when reference price available
+  rawRatio    String
+  ourAmount   String
+  otherAmount String
+  usdNormalizedPrice String?
   @@unique([txHash, logIndex])
   @@index([pairAddress, timestamp])
 }
@@ -152,8 +152,8 @@ model TokenCache {
   name        String
   symbol      String
   decimals    Int
-  totalSupply String?   // decimal string
-  dexId       String?   // e.g., "uniswap"
+  totalSupply String?
+  dexId       String?
   pairAddress String?
   updatedAt   DateTime  @updatedAt
 }
