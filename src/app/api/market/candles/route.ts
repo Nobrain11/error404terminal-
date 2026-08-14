@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ethers } from 'ethers';
+import { ethers, EventLog } from 'ethers';
 import { RPC_URL } from '@/lib/constants';
-
-// This endpoint builds candles from on-chain Swap events.
-// It assumes we have stored SwapEvent rows via a background sync.
-// For simplicity, we will also fetch new events on the fly (caching).
 
 async function fetchSwapEvents(pairAddress: string, fromBlock: number, toBlock: number) {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -24,46 +20,42 @@ async function fetchSwapEvents(pairAddress: string, fromBlock: number, toBlock: 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const pairAddress = searchParams.get('pair');
-  const timeframe = searchParams.get('timeframe') || '1H'; // 1m,5m,15m,30m,1H,4H,1D,1W
+  const timeframe = searchParams.get('timeframe') || '1H';
 
   if (!pairAddress) {
     return NextResponse.json({ error: 'Missing pair address' }, { status: 400 });
   }
 
   try {
-    // 1. Find last cached block for this pair
     const lastEvent = await prisma.swapEvent.findFirst({
       where: { pairAddress },
       orderBy: { blockNumber: 'desc' },
     });
     const lastBlock = lastEvent ? lastEvent.blockNumber : 0;
 
-    // 2. Get current block number
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const currentBlock = await provider.getBlockNumber();
 
-    // 3. Fetch new events from lastBlock+1 to currentBlock
     if (currentBlock > lastBlock) {
       const events = await fetchSwapEvents(pairAddress, lastBlock + 1, currentBlock);
-      // Decode and store
       for (const event of events) {
-        const args = event.args as any;
+        const eventLog = event as EventLog; // <-- key fix: cast to EventLog
+        const args = eventLog.args as any;
         if (!args) continue;
         const { amount0In, amount1In, amount0Out, amount1Out } = args;
-        // Determine if buy/sell (simple heuristic: if amount0In > 0 and amount0Out == 0, it's buy of token0)
         const isBuy = amount0In > 0n && amount0Out === 0n;
-        const ourAmount = isBuy ? amount0In : amount0Out; // token amount
-        const otherAmount = isBuy ? amount1Out : amount1In; // paired token amount
+        const ourAmount = isBuy ? amount0In : amount0Out;
+        const otherAmount = isBuy ? amount1Out : amount1In;
         const rawRatio = parseFloat(ethers.formatEther(otherAmount)) / parseFloat(ethers.formatEther(ourAmount));
 
         await prisma.swapEvent.create({
           data: {
             pairAddress,
-            tokenCa: '', // Could be derived from pair, but we'll store later
-            txHash: event.transactionHash,
-            logIndex: event.logIndex,
-            blockNumber: event.blockNumber,
-            timestamp: new Date((await provider.getBlock(event.blockNumber))!.timestamp * 1000),
+            tokenCa: '',
+            txHash: eventLog.transactionHash,
+            logIndex: eventLog.logIndex,
+            blockNumber: eventLog.blockNumber,
+            timestamp: new Date((await provider.getBlock(eventLog.blockNumber))!.timestamp * 1000),
             isBuy,
             rawRatio: rawRatio.toString(),
             ourAmount: ourAmount.toString(),
@@ -73,7 +65,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 4. Query cached swaps within time range
     const now = new Date();
     let startTime = new Date();
     switch (timeframe) {
@@ -100,8 +91,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ candles: [], error: 'No on-chain trades available for this period.' });
     }
 
-    // 5. Bucket into time intervals (align to timeframe start)
-    // For simplicity, we'll group by minute/hour/day accordingly.
     const bucketSize = (() => {
       switch (timeframe) {
         case '1m': return 60 * 1000;
@@ -136,7 +125,7 @@ export async function GET(req: NextRequest) {
       if (price < b.low) b.low = price;
       if (price > b.high) b.high = price;
       b.close = price;
-      b.volume += parseFloat(swap.otherAmount); // volume in ETH or paired token
+      b.volume += parseFloat(swap.otherAmount);
       b.trades += 1;
     }
 
@@ -153,15 +142,9 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // For normalizing USD price, we need a reference price.
-    // We'll use the most recent swap's rawRatio and a known USD price.
-    // For simplicity, we will fetch current USD price from DexScreener.
-    // We'll assume the user has a token CA and we can fetch.
-    // We'll just return raw ratios; client can multiply.
-
     return NextResponse.json({
       candles,
-      normalized: false, // client will fetch reference price separately
+      normalized: false,
     });
   } catch (error) {
     console.error(error);
