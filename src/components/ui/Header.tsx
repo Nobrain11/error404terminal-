@@ -1,0 +1,61 @@
+'use client';
+
+import { useAuth } from '@/lib/auth-context';
+import { useState } from 'react';
+import SettingsPage from '../pages/SettingsPage';
+
+export default function Header() {
+  const { status, user, walletAddress, connect, disconnect } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
+
+  const handleConnect = async () => {
+    if (status === 'connected') {
+      // Show wallet info, maybe disconnect
+      if (window.confirm('Disconnect wallet?')) {
+        await disconnect();
+      }
+    } else {
+      await connect();
+    }
+  };
+
+  return (
+    <>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #1a1a1a', backgroundColor: '#0a0a0b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#00C805', fontWeight: 700, fontSize: 20 }}>ERROR404</span>
+          <span style={{ color: '#888', fontSize: 14, fontWeight: 300 }}>Terminal</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {status === 'connected' && walletAddress && (
+            <span style={{ color: '#aaa', fontSize: 13, background: '#1a1a1a', padding: '4px 10px', borderRadius: 12 }}>
+              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            </span>
+          )}
+          <button
+            onClick={handleConnect}
+            style={{
+              background: status === 'connected' ? '#1a1a1a' : '#00C805',
+              color: status === 'connected' ? '#aaa' : '#0a0a0b',
+              border: 'none',
+              borderRadius: 20,
+              padding: '6px 16px',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            {status === 'connected' ? 'Connected' : status === 'connecting' ? '...' : 'Connect'}
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 20, cursor: 'pointer' }}
+          >
+            ⚙️
+          </button>
+        </div>
+      </header>
+      {showSettings && <SettingsPage onClose={() => setShowSettings(false)} />}
+    </>
+  );
+}
