@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  telegramId      String    @unique
+  username        String?
+  firstName       String?
+  lastName        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  wallets         Wallet[]
+  sessions        Session[]
+  loginCodes      LoginCode[]
+  settings        Settings?
+  referral        Referral?
+  watchedTokens   Watchlist[]
+  alerts          Alert[]
+}
+
+model Wallet {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address        String    @unique
+  encryptedKey   String    // AES-256-GCM encrypted private key (hex)
+  encryptedPhrase String?  // AES-256-GCM encrypted mnemonic (hex)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  transactions   Transaction[]
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+}
+
+model LoginCode {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  telegramId  String
+  userId      Int?      // optional, set when used
+  user        User?     @relation(fields: [userId], references: [id])
+  used        Boolean   @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+}
+
+model Transaction {
+  id              Int       @id @default(autoincrement())
+  walletId        Int
+  wallet          Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  txHash          String
+  type            String    // "buy", "sell", "transfer"
+  tokenCa         String?
+  amount          String?   // decimal string
+  price           String?   // decimal string
+  usdValue        String?
+  blockNumber     Int?
+  timestamp       DateTime
+  createdAt       DateTime  @default(now())
+}
+
+model Portfolio {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenCa     String
+  amount      String    // decimal string
+  usdValue    String?   // decimal string
+  updatedAt   DateTime  @updatedAt
+}
+
+model Alert {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenCa     String
+  targetPrice String    // decimal string
+  direction   String    // "above", "below"
+  triggered   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+model Watchlist {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenCa     String
+  addedAt     DateTime  @default(now())
+}
+
+model Settings {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slippage    Float     @default(0.5)
+  gasLimit    Int?      // custom gas limit
+  notifications Boolean @default(true)
+  updatedAt   DateTime  @updatedAt
+}
+
+model Referral {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code        String    @unique
+  referredBy  Int?      // userId of referrer
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Market data support models
+model PriceSnapshot {
+  id          Int       @id @default(autoincrement())
+  tokenCa     String
+  price       String    // decimal string
+  timestamp   DateTime  @default(now())
+  @@index([tokenCa, timestamp])
+}
+
+model SwapEvent {
+  id          Int       @id @default(autoincrement())
+  pairAddress String
+  tokenCa     String
+  txHash      String
+  logIndex    Int
+  blockNumber Int
+  timestamp   DateTime
+  isBuy       Boolean
+  rawRatio    String    // raw on-chain price ratio (e.g., token/ETH)
+  ourAmount   String    // amount of tokenCa in base units
+  otherAmount String    // amount of paired token (ETH/WETH)
+  usdNormalizedPrice String? // when reference price available
+  @@unique([txHash, logIndex])
+  @@index([pairAddress, timestamp])
+}
+
+model TokenCache {
+  id          Int       @id @default(autoincrement())
+  tokenCa     String    @unique
+  name        String
+  symbol      String
+  decimals    Int
+  totalSupply String?   // decimal string
+  dexId       String?   // e.g., "uniswap"
+  pairAddress String?
+  updatedAt   DateTime  @updatedAt
+}
