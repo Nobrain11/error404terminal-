@@ -2,7 +2,7 @@ import { Telegraf, session, Context } from 'telegraf';
 import { prisma } from '@/lib/prisma';
 import { createWallet, importWallet, getEthBalance } from '@/lib/wallet';
 
-// Extend session type
+// --- Session type ---
 interface SessionData {
   importing?: boolean;
 }
@@ -12,10 +12,13 @@ interface MyContext extends Context {
 
 const bot = new Telegraf<MyContext>(process.env.BOT_TOKEN!);
 
-// Middleware
-bot.use(session());
+// --- Session middleware (memory store fallback) ---
+bot.use(session({
+  defaultSession: () => ({ importing: false }),
+  // If Redis is not available, it will use memory (default)
+}));
 
-// Admin notification helper
+// --- Admin notification ---
 async function notifyAdmin(message: string) {
   const adminChatId = process.env.ADMIN_CHAT_ID;
   if (adminChatId) {
@@ -27,7 +30,7 @@ async function notifyAdmin(message: string) {
   }
 }
 
-// /start command
+// --- /start ---
 bot.command('start', async (ctx) => {
   const telegramId = ctx.from?.id.toString();
   if (!telegramId) {
@@ -73,7 +76,7 @@ Use the buttons below to manage your trading.
   });
 });
 
-// /link command
+// --- /link ---
 bot.command('link', async (ctx) => {
   const telegramId = ctx.from?.id.toString();
   if (!telegramId) {
@@ -95,7 +98,7 @@ bot.command('link', async (ctx) => {
   await ctx.reply(`🔑 Your login code: *${code}*\nOr click: ${link}`, { parse_mode: 'Markdown' });
 });
 
-// Handle callback queries
+// --- Callback queries ---
 bot.on('callback_query', async (ctx) => {
   const callbackQuery = ctx.callbackQuery;
   if (!('data' in callbackQuery)) {
@@ -152,6 +155,7 @@ bot.on('callback_query', async (ctx) => {
   await ctx.answerCbQuery();
 });
 
+// --- Functions ---
 async function showWalletsMenu(ctx: MyContext, userId: number) {
   const wallet = await prisma.wallet.findFirst({ where: { userId } });
   const address = wallet?.address || 'No wallet';
@@ -190,10 +194,12 @@ async function createWalletFlow(ctx: MyContext, userId: number) {
   }
 }
 
-// Handle text messages for import
+// --- Text handler for import ---
 bot.on('text', async (ctx) => {
+  // Check if we are expecting import
   if (ctx.session.importing) {
-    delete ctx.session.importing;
+    // Reset flag
+    ctx.session.importing = false;
     const telegramId = ctx.from?.id.toString();
     if (!telegramId) {
       await ctx.reply('Unable to identify user.');
@@ -215,9 +221,13 @@ bot.on('text', async (ctx) => {
     } catch (e) {
       await ctx.reply('Invalid private key or mnemonic.');
     }
+  } else {
+    // Ignore other text messages
+    // Optionally, you can reply with a help message or ignore.
   }
 });
 
+// --- Buy/Sell flows ---
 async function handleBuySell(ctx: MyContext, userId: number, isBuy: boolean) {
   const action = isBuy ? 'Buy' : 'Sell';
   await ctx.reply(
@@ -267,10 +277,13 @@ async function showSettings(ctx: MyContext, userId: number) {
   );
 }
 
-// Start bot
+// --- Launch with error handling ---
 bot.launch().then(() => {
   console.log('🤖 Bot is running');
+}).catch((err) => {
+  console.error('Bot launch error:', err);
 });
 
+// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
