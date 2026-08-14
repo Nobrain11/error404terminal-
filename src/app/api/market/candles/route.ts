@@ -39,11 +39,11 @@ export async function GET(req: NextRequest) {
     if (currentBlock > lastBlock) {
       const events = await fetchSwapEvents(pairAddress, lastBlock + 1, currentBlock);
       for (const event of events) {
-        const eventLog = event as EventLog;
-        const args = eventLog.args as any;
+        // Cast to any to access properties that exist at runtime
+        const ev = event as any;
+        const args = ev.args;
         if (!args) continue;
         const { amount0In, amount1In, amount0Out, amount1Out } = args;
-        // Use BigInt(0) instead of 0n
         const isBuy = amount0In > BigInt(0) && amount0Out === BigInt(0);
         const ourAmount = isBuy ? amount0In : amount0Out;
         const otherAmount = isBuy ? amount1Out : amount1In;
@@ -53,10 +53,10 @@ export async function GET(req: NextRequest) {
           data: {
             pairAddress,
             tokenCa: '',
-            txHash: eventLog.transactionHash,
-            logIndex: eventLog.logIndex,
-            blockNumber: eventLog.blockNumber,
-            timestamp: new Date((await provider.getBlock(eventLog.blockNumber))!.timestamp * 1000),
+            txHash: ev.transactionHash,
+            logIndex: ev.logIndex,
+            blockNumber: ev.blockNumber,
+            timestamp: new Date((await provider.getBlock(ev.blockNumber))!.timestamp * 1000),
             isBuy,
             rawRatio: rawRatio.toString(),
             ourAmount: ourAmount.toString(),
