@@ -32,8 +32,18 @@ export default function LiveActivity() {
   }, []);
 
   return (
-    <div className="live-activity">
-      <span className="live-dot">● LIVE</span>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px',
+      padding: '4px 16px',
+      overflowX: 'auto',
+      whiteSpace: 'nowrap',
+      height: '100%',
+      fontSize: '12px',
+      color: '#888',
+    }}>
+      <span style={{ color: '#00C805', fontWeight: 600 }}>● LIVE</span>
       {activities.slice(0, 10).map((act) => {
         let color = '#888';
         let icon = '';
