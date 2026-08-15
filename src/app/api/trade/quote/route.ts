@@ -3,9 +3,8 @@ import { ethers } from 'ethers';
 import { verifySession } from '@/lib/jwt';
 import { getDecryptedPrivateKey } from '@/lib/wallet';
 
-// UniversalRouter address on Robinhood Chain (placeholder – update with actual)
-const UNIVERSAL_ROUTER = '0x...'; // Add actual address
-const WETH_ADDRESS = '0x...'; // Add actual WETH address
+const UNIVERSAL_ROUTER = '0x...'; // Replace with actual address
+const WETH_ADDRESS = '0x...'; // Replace with actual WETH address
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
@@ -33,15 +32,16 @@ export async function POST(req: NextRequest) {
     const wallet = new ethers.Wallet(privateKey, provider);
     const address = await wallet.getAddress();
 
-    // Simple quote logic (placeholder – replace with actual UniversalRouter call)
-    // For now, we'll simulate a quote with 0.5% slippage
+    // Parse amount as BigInt (in wei)
     const amountIn = ethers.parseEther(amount);
-    // For sell, we need token balance and approve
-    // For buy, we need ETH balance
 
-    // Placeholder quote
-    const quoteAmount = amountIn * 0.98n; // 2% price impact
-    const minAmount = quoteAmount * BigInt(Math.floor((100 - slippage) * 100)) / 10000n;
+    // Simulate a 2% price impact (for demonstration)
+    // quoteAmount = amountIn * 0.98  => using BigInt math: (amountIn * 98n) / 100n
+    const quoteAmount = (amountIn * 98n) / 100n;
+
+    // Compute min amount with slippage (slippage is a percentage, e.g., 0.5)
+    const slippageBasisPoints = BigInt(Math.floor(slippage * 100)); // 0.5% -> 50 basis points
+    const minAmount = (quoteAmount * (10000n - slippageBasisPoints)) / 10000n;
 
     return NextResponse.json({
       success: true,
