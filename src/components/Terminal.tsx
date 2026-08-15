@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import Header from './ui/Header';
@@ -15,23 +15,55 @@ import SettingsPage from './pages/SettingsPage';
 import TokenDetail from './pages/TokenDetail';
 
 export default function Terminal() {
-  const [activeTab, setActiveTab] = useState<'discover' | 'trade' | 'scanner' | 'portfolio'>('discover');
-  const [selectedToken, setSelectedToken] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const { status, user, walletAddress, connect, disconnect } = useAuth();
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
-  const handleSelectToken = (ca: string) => setSelectedToken(ca);
+  // Read URL params
+  const [activeTab, setActiveTab] = useState<'discover' | 'trade' | 'scanner' | 'portfolio'>('discover');
+  const [selectedToken, setSelectedToken] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [tradeToken, setTradeToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const token = params.get('token');
+    if (tab === 'trade') {
+      setActiveTab('trade');
+      if (token) setTradeToken(token);
+    } else if (tab === 'discover' || tab === 'scanner' || tab === 'portfolio') {
+      setActiveTab(tab);
+    }
+    if (token && !tab) {
+      // If only token param, open token detail
+      setSelectedToken(token);
+    }
+  }, []);
+
+  const handleSelectToken = (ca: string) => {
+    setSelectedToken(ca);
+    setTradeToken(null); // clear trade token when opening detail
+  };
   const handleCloseDetail = () => setSelectedToken(null);
 
   const renderMainContent = () => {
     if (activeTab === 'discover') {
-      return <DiscoverPage onSelectToken={handleSelectToken} />;
+      return <DiscoverPage onSelectToken={handleSelectToken} onTradeToken={(ca) => {
+        setActiveTab('trade');
+        setTradeToken(ca);
+        setSelectedToken(null);
+      }} />;
     }
-    if (activeTab === 'trade') return <TradePage />;
+    if (activeTab === 'trade') {
+      return <TradePage initialTokenCa={tradeToken || undefined} />;
+    }
     if (activeTab === 'scanner') return <ScannerPage />;
     if (activeTab === 'portfolio') return <PortfolioPage />;
-    return <DiscoverPage onSelectToken={handleSelectToken} />;
+    return <DiscoverPage onSelectToken={handleSelectToken} onTradeToken={(ca) => {
+      setActiveTab('trade');
+      setTradeToken(ca);
+      setSelectedToken(null);
+    }} />;
   };
 
   const handleConnect = async () => {
@@ -44,7 +76,7 @@ export default function Terminal() {
     }
   };
 
-  // Mobile: same as before (full-screen detail)
+  // Mobile layout
   if (!isDesktop) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0a0a0b', maxWidth: 480, margin: '0 auto', paddingBottom: 70 }}>
@@ -63,7 +95,7 @@ export default function Terminal() {
     );
   }
 
-  // Desktop: split view (list on left, detail on right)
+  // Desktop layout
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0a0a0b' }}>
       <Sidebar
@@ -72,7 +104,6 @@ export default function Terminal() {
         onSettings={() => setShowSettings(!showSettings)}
       />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Top bar */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -108,9 +139,7 @@ export default function Terminal() {
         </div>
         <TickerTape />
 
-        {/* Main area: list + detail side-by-side */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* Left: main content (list) */}
           <div style={{
             flex: selectedToken ? '0 0 55%' : '1',
             overflowY: 'auto',
@@ -118,10 +147,14 @@ export default function Terminal() {
             borderRight: selectedToken ? '1px solid #1a1a1a' : 'none',
             transition: 'flex 0.3s ease',
           }}>
-            {renderMainContent()}
+            {selectedToken ? (
+              // When detail is open, we still show the main content list on the left
+              renderMainContent()
+            ) : (
+              renderMainContent()
+            )}
           </div>
 
-          {/* Right: token detail panel (if selected) */}
           {selectedToken && (
             <div style={{
               flex: '0 0 45%',
