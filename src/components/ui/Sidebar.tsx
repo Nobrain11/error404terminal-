@@ -1,84 +1,68 @@
 'use client';
 
-import { Home, BarChart2, Search, User, Settings } from 'lucide-react';
+import { Home, Sparkles, TrendingUp, TrendingDown, BarChart2, Bookmark, Flame } from 'lucide-react';
 
-interface SidebarProps {
-  activeTab: 'discover' | 'pulse' | 'tracker' | 'portfolio' | 'settings';
-  onTabChange: (tab: 'discover' | 'pulse' | 'tracker' | 'portfolio' | 'settings') => void;
-  onSettings: () => void;
+interface SidebarNavProps {
+  activeCategory: string;
+  onCategoryChange: (category: string) => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange, onSettings }: SidebarProps) {
-  const tabs = [
-    { id: 'discover', label: 'Discover', icon: Home },
-    { id: 'pulse', label: 'Pulse', icon: BarChart2 },
-    { id: 'tracker', label: 'Tracker', icon: Search },
-    { id: 'portfolio', label: 'Portfolio', icon: User },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ] as const;
+const categories = [
+  { id: 'discover', label: 'Discover', icon: Home },
+  { id: 'new', label: 'New', icon: Sparkles },
+  { id: 'trending', label: 'Trending', icon: Flame },
+  { id: 'gainers', label: 'Top Gainers', icon: TrendingUp },
+  { id: 'losers', label: 'Top Losers', icon: TrendingDown },
+  { id: 'volume', label: 'Volume', icon: BarChart2 },
+  { id: 'watchlist', label: 'Watchlist', icon: Bookmark },
+];
 
+export default function SidebarNav({ activeCategory, onCategoryChange }: SidebarNavProps) {
   return (
-    <div style={{
-      width: 64,
+    <nav style={{
+      width: '56px',
       backgroundColor: '#0a0a0b',
       borderRight: '1px solid #1a1a1a',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      paddingTop: 16,
-      gap: 8,
-      height: '100vh',
-      position: 'sticky',
-      top: 0,
+      paddingTop: '8px',
+      gap: '2px',
       flexShrink: 0,
+      overflowY: 'auto',
     }}>
-      <div style={{
-        fontSize: 18,
-        fontWeight: 700,
-        color: '#00C805',
-        marginBottom: 16,
-        writingMode: 'vertical-rl',
-        letterSpacing: 4,
-      }}>
-        ERROR
-      </div>
-
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+      {categories.map((cat) => {
+        const Icon = cat.icon;
+        const isActive = activeCategory === cat.id;
         return (
           <button
-            key={tab.id}
-            onClick={() => {
-              if (tab.id === 'settings') {
-                onSettings();
-              } else {
-                onTabChange(tab.id);
-              }
-            }}
+            key={cat.id}
+            onClick={() => onCategoryChange(cat.id)}
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
+              width: '44px',
+              height: '44px',
+              borderRadius: '8px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               background: isActive ? '#1a1a1a' : 'transparent',
               color: isActive ? '#00C805' : '#666',
-              border: isActive ? '1px solid #2a2a2a' : 'none',
+              border: 'none',
               cursor: 'pointer',
-              fontSize: 10,
-              gap: 2,
+              fontSize: '9px',
+              gap: '1px',
+              transition: 'background 0.15s',
             }}
+            title={cat.label}
           >
-            <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
-            <span style={{ fontSize: 9, marginTop: 2 }}>{tab.label}</span>
+            <Icon size={18} strokeWidth={isActive ? 2 : 1.5} />
+            <span style={{ fontSize: '7px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+              {cat.label.length > 6 ? cat.label.slice(0, 6) : cat.label}
+            </span>
           </button>
         );
       })}
-
-      <div style={{ flex: 1 }} />
-    </div>
+    </nav>
   );
 }
