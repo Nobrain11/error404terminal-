@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Star, Bell, Settings, Menu } from 'lucide-react';
 
 interface HeaderProps {
   onSearch: (query: string) => void;
@@ -11,6 +11,7 @@ interface HeaderProps {
 export default function Header({ onSearch }: HeaderProps) {
   const { status, walletAddress, connect, disconnect } = useAuth();
   const [search, setSearch] = useState('');
+  const [balance, setBalance] = useState<string | null>(null);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -28,70 +29,72 @@ export default function Header({ onSearch }: HeaderProps) {
     }
   };
 
+  // Fetch balance when connected
+  useState(() => {
+    if (status === 'connected' && walletAddress) {
+      fetch('/api/wallet/balance', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      })
+        .then(res => res.json())
+        .then(data => setBalance(data.balance || '0'))
+        .catch(() => setBalance('0'));
+    }
+  }, [status, walletAddress]);
+
   return (
-    <header style={{
-      display: 'flex',
-      alignItems: 'center',
-      padding: '6px 16px',
-      borderBottom: '1px solid #1a1a1a',
-      backgroundColor: '#0a0a0b',
-      gap: '12px',
-      flexShrink: 0,
-      height: '48px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        <span style={{ color: '#00C805', fontWeight: 700, fontSize: '18px' }}>ERROR404</span>
-        <span style={{ color: '#888', fontSize: '11px', fontWeight: 300 }}>TERMINAL</span>
+    <header className="terminal-header">
+      {/* Brand */}
+      <div className="header-brand">
+        <span className="brand-error">ERROR</span>
+        <span className="brand-404">404</span>
+        <span className="brand-terminal">TERMINAL</span>
       </div>
 
-      <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+      {/* Search */}
+      <div className="header-search">
+        <Search size={16} className="search-icon" />
         <input
           type="text"
           placeholder="Search token or contract..."
           value={search}
           onChange={handleSearchChange}
-          style={{
-            width: '100%',
-            padding: '4px 10px 4px 28px',
-            background: '#111',
-            border: '1px solid #2a2a2a',
-            borderRadius: '16px',
-            color: '#e5e5e5',
-            fontSize: '13px',
-            outline: 'none',
-            height: '30px',
-          }}
+          className="search-input"
         />
-        <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
       </div>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+      {/* Actions */}
+      <div className="header-actions">
+        <button className="header-btn" title="Watchlist">
+          <Star size={18} />
+        </button>
+        <button className="header-btn" title="Notifications">
+          <Bell size={18} />
+        </button>
+        <button className="header-btn" title="Settings">
+          <Settings size={18} />
+        </button>
+
+        {/* Wallet */}
         {status === 'connected' && walletAddress && (
-          <span style={{
-            color: '#aaa',
-            fontSize: '12px',
-            background: '#1a1a1a',
-            padding: '2px 10px',
-            borderRadius: '12px',
-          }}>
-            {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-          </span>
+          <div className="header-wallet">
+            <span className="wallet-address">
+              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            </span>
+            {balance && (
+              <span className="wallet-balance">{parseFloat(balance).toFixed(4)} ETH</span>
+            )}
+          </div>
         )}
+
         <button
           onClick={handleConnect}
-          style={{
-            background: status === 'connected' ? '#1a1a1a' : '#00C805',
-            color: status === 'connected' ? '#aaa' : '#0a0a0b',
-            border: 'none',
-            borderRadius: '14px',
-            padding: '4px 14px',
-            fontWeight: 600,
-            fontSize: '12px',
-            cursor: 'pointer',
-            height: '28px',
-          }}
+          className={`header-connect ${status === 'connected' ? 'connected' : ''}`}
         >
           {status === 'connected' ? 'Wallet' : status === 'connecting' ? '...' : 'Connect'}
+        </button>
+
+        <button className="header-btn mobile-menu">
+          <Menu size={20} />
         </button>
       </div>
     </header>
