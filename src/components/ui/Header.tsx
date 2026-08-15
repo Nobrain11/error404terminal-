@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { useState, useEffect } from 'react';
-import { Search, Star, Bell, Settings, Menu } from 'lucide-react';
 
 interface HeaderProps {
   onSearch: (query: string) => void;
@@ -29,7 +28,6 @@ export default function Header({ onSearch }: HeaderProps) {
     }
   };
 
-  // Fetch balance when connected
   useEffect(() => {
     if (status === 'connected' && walletAddress) {
       fetch('/api/wallet/balance', {
@@ -44,60 +42,102 @@ export default function Header({ onSearch }: HeaderProps) {
   }, [status, walletAddress]);
 
   return (
-    <header className="terminal-header">
-      {/* Brand */}
-      <div className="header-brand">
-        <span className="brand-error">ERROR</span>
-        <span className="brand-404">404</span>
-        <span className="brand-terminal">TERMINAL</span>
+    <header style={{
+      display: 'flex',
+      alignItems: 'center',
+      padding: '6px 16px',
+      borderBottom: '1px solid #1a1a1a',
+      background: '#0a0a0b',
+      gap: '12px',
+      flexShrink: 0,
+      height: '48px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+        <span style={{ color: '#e5e5e5', fontWeight: 700, fontSize: '16px' }}>ERROR</span>
+        <span style={{ color: '#00C805', fontWeight: 700, fontSize: '16px' }}>404</span>
+        <span style={{ color: '#888', fontSize: '11px', fontWeight: 300, marginLeft: '4px' }}>TERMINAL</span>
       </div>
 
-      {/* Search */}
-      <div className="header-search">
-        <Search size={16} className="search-icon" />
+      <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+        <span style={{
+          position: 'absolute',
+          left: '10px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: '#666',
+          fontSize: '14px',
+        }}>🔍</span>
         <input
           type="text"
           placeholder="Search token or contract..."
           value={search}
           onChange={handleSearchChange}
-          className="search-input"
+          style={{
+            width: '100%',
+            padding: '4px 10px 4px 32px',
+            background: '#111',
+            border: '1px solid #1a1a1a',
+            borderRadius: '16px',
+            color: '#e5e5e5',
+            fontSize: '13px',
+            outline: 'none',
+            height: '30px',
+          }}
         />
       </div>
 
-      {/* Actions */}
-      <div className="header-actions">
-        <button className="header-btn" title="Watchlist">
-          <Star size={18} />
-        </button>
-        <button className="header-btn" title="Notifications">
-          <Bell size={18} />
-        </button>
-        <button className="header-btn" title="Settings">
-          <Settings size={18} />
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexShrink: 0 }}>
+        <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>⭐</button>
+        <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>🔔</button>
+        <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>⚙️</button>
 
-        {/* Wallet */}
         {status === 'connected' && walletAddress && (
-          <div className="header-wallet">
-            <span className="wallet-address">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#111',
+            padding: '2px 10px',
+            borderRadius: '12px',
+            border: '1px solid #1a1a1a',
+          }}>
+            <span style={{ color: '#888', fontSize: '12px' }}>
               {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
             </span>
             {balance && (
-              <span className="wallet-balance">{parseFloat(balance).toFixed(4)} ETH</span>
+              <span style={{ color: '#00C805', fontSize: '12px', fontWeight: 600 }}>
+                {parseFloat(balance).toFixed(4)} ETH
+              </span>
             )}
           </div>
         )}
 
         <button
           onClick={handleConnect}
-          className={`header-connect ${status === 'connected' ? 'connected' : ''}`}
+          style={{
+            background: status === 'connected' ? '#111' : '#00C805',
+            color: status === 'connected' ? '#888' : '#0a0a0b',
+            border: status === 'connected' ? '1px solid #1a1a1a' : 'none',
+            borderRadius: '14px',
+            padding: '4px 14px',
+            fontWeight: 600,
+            fontSize: '12px',
+            cursor: 'pointer',
+            height: '28px',
+          }}
         >
           {status === 'connected' ? 'Wallet' : status === 'connecting' ? '...' : 'Connect'}
         </button>
 
-        <button className="header-btn mobile-menu">
-          <Menu size={20} />
-        </button>
+        <button style={{
+          background: 'none',
+          border: 'none',
+          color: '#888',
+          cursor: 'pointer',
+          display: 'none',
+          fontSize: '20px',
+          '@media (max-width: 768px)': { display: 'flex' },
+        }}>☰</button>
       </div>
     </header>
   );
