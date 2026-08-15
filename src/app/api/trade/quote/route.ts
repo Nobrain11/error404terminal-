@@ -36,12 +36,12 @@ export async function POST(req: NextRequest) {
     const amountIn = ethers.parseEther(amount);
 
     // Simulate a 2% price impact (for demonstration)
-    // quoteAmount = amountIn * 0.98  => using BigInt math: (amountIn * 98n) / 100n
-    const quoteAmount = (amountIn * 98n) / 100n;
+    // quoteAmount = amountIn * 0.98  => using BigInt math: (amountIn * 98) / 100
+    const quoteAmount = (amountIn * BigInt(98)) / BigInt(100);
 
     // Compute min amount with slippage (slippage is a percentage, e.g., 0.5)
     const slippageBasisPoints = BigInt(Math.floor(slippage * 100)); // 0.5% -> 50 basis points
-    const minAmount = (quoteAmount * (10000n - slippageBasisPoints)) / 10000n;
+    const minAmount = (quoteAmount * (BigInt(10000) - slippageBasisPoints)) / BigInt(10000);
 
     return NextResponse.json({
       success: true,
