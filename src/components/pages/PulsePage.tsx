@@ -27,7 +27,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
   const [timeframe, setTimeframe] = useState('5m');
   const [view, setView] = useState<'chart+table' | 'chart' | 'table'>('chart+table');
 
-  // Fetch token info
   useEffect(() => {
     if (!tokenCa) return;
     const fetchToken = async () => {
@@ -44,7 +43,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
     fetchToken();
   }, [tokenCa]);
 
-  // Fetch trades
   useEffect(() => {
     if (!tokenCa) return;
     const fetchTrades = async () => {
@@ -79,7 +77,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
     return Math.floor(minutes / 10080) + 'w';
   };
 
-  // If no token selected, show a prompt
   if (!tokenCa) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#666' }}>
@@ -105,22 +102,32 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
 
   return (
     <div style={{ padding: '4px 0' }}>
-      {/* Token header */}
+      {/* Token header with logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
             width: 32,
             height: 32,
             borderRadius: '50%',
+            overflow: 'hidden',
+            flexShrink: 0,
             background: '#2a2a2a',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 14,
-            fontWeight: 700,
-            color: '#e5e5e5',
           }}>
-            {token.symbol?.charAt(0) || '?'}
+            {token.logo ? (
+              <img
+                src={token.logo}
+                alt={token.symbol}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+              />
+            ) : (
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#e5e5e5' }}>
+                {token.symbol?.charAt(0) || '?'}
+              </span>
+            )}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: '#e5e5e5' }}>{token.symbol || '???'}</div>
@@ -137,7 +144,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         </div>
       </div>
 
-      {/* View toggle: Chart+Table | Chart | Table */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 8, background: '#111', borderRadius: 6, padding: 2 }}>
         {['chart+table', 'chart', 'table'].map((v) => (
           <button
@@ -161,7 +167,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         ))}
       </div>
 
-      {/* Timeframe selector */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
         {timeframes.map((tf) => (
           <button
@@ -183,7 +188,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         ))}
       </div>
 
-      {/* Chart */}
       {(view === 'chart+table' || view === 'chart') && (
         <div style={{ marginBottom: 8 }}>
           <Chart
@@ -196,7 +200,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         </div>
       )}
 
-      {/* Trades table */}
       {(view === 'chart+table' || view === 'table') && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -240,7 +243,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
             </div>
           )}
 
-          {/* Bottom stats */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr 1fr',
@@ -269,7 +271,6 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         </div>
       )}
 
-      {/* Buy/Sell buttons */}
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <button
           onClick={() => window.location.href = `/terminal?tab=pulse&token=${token.tokenCa}`}
