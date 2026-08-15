@@ -3,9 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 
-export default function TradePage() {
+interface TradePageProps {
+  initialTokenCa?: string;
+}
+
+export default function TradePage({ initialTokenCa }: TradePageProps) {
   const { status, walletAddress } = useAuth();
-  const [tokenCa, setTokenCa] = useState('');
+  const [tokenCa, setTokenCa] = useState(initialTokenCa || '');
   const [amount, setAmount] = useState('');
   const [isBuy, setIsBuy] = useState(true);
   const [slippage, setSlippage] = useState(0.5);
@@ -14,7 +18,12 @@ export default function TradePage() {
   const [error, setError] = useState('');
   const [balance, setBalance] = useState('0');
 
-  // Fetch balance
+  useEffect(() => {
+    if (initialTokenCa) {
+      setTokenCa(initialTokenCa);
+    }
+  }, [initialTokenCa]);
+
   useEffect(() => {
     if (status === 'connected' && walletAddress) {
       fetch('/api/wallet/balance', {
