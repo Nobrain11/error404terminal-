@@ -7,7 +7,6 @@ import { prisma } from '@/lib/prisma';
 const UNIVERSAL_ROUTER = '0x...'; // Update with actual address
 const WETH_ADDRESS = '0x...'; // Update with actual WETH address
 
-// Minimal ABI for UniversalRouter swap (placeholder – use full ABI)
 const ROUTER_ABI = [
   'function swap((bytes commands, bytes[] inputs, uint256 deadline)) external payable',
 ];
@@ -38,17 +37,15 @@ export async function POST(req: NextRequest) {
     const wallet = new ethers.Wallet(privateKey, provider);
     const address = await wallet.getAddress();
 
-    // Build swap command (placeholder – replace with actual UniversalRouter call)
     const router = new ethers.Contract(UNIVERSAL_ROUTER, ROUTER_ABI, wallet);
     const amountIn = ethers.parseEther(amount);
     const minOut = ethers.parseEther(minAmount);
 
-    // Prepare transaction
     const tx = await router.swap(
       {
-        commands: '0x00', // placeholder command
+        commands: '0x00',
         inputs: [],
-        deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 min deadline
+        deadline: Math.floor(Date.now() / 1000) + 60 * 20,
       },
       {
         value: isBuy ? amountIn : 0,
@@ -56,10 +53,8 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // Wait for confirmation
     const receipt = await tx.wait();
 
-    // Save transaction to database
     await prisma.transaction.create({
       data: {
         walletId: (await prisma.wallet.findFirst({ where: { userId: session.userId } }))!.id,
