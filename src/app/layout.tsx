@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'ERROR404 Terminal',
-  description: 'On-chain trading terminal for Robinhood Chain',
+  description: 'Professional trading terminal for Robinhood Chain',
 };
 
 export default function RootLayout({
