@@ -51,15 +51,15 @@ export default function DiscoverFeed({
   }, [category, searchQuery]);
 
   if (loading && tokens.length === 0) {
-    return <div className="feed-loading">Loading tokens...</div>;
+    return <div style={{ padding: '12px', color: '#666', textAlign: 'center', fontSize: '13px' }}>Loading tokens...</div>;
   }
 
   if (tokens.length === 0) {
-    return <div className="feed-empty">No tokens found</div>;
+    return <div style={{ padding: '12px', color: '#666', textAlign: 'center', fontSize: '13px' }}>No tokens found</div>;
   }
 
   return (
-    <div className="discover-feed">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
       {tokens.slice(0, 100).map((token) => {
         const isSelected = token.tokenCa === selectedTokenCa;
         const change = token.change || 0;
@@ -73,14 +73,43 @@ export default function DiscoverFeed({
           <div
             key={token.pairAddress}
             onClick={() => onSelectToken(token)}
-            className={`feed-item ${isSelected ? 'selected' : ''}`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '28px 1fr auto',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              background: isSelected ? '#1a1a1a' : 'transparent',
+              borderLeft: isSelected ? '2px solid #00C805' : '2px solid transparent',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isSelected) e.currentTarget.style.background = '#151515';
+            }}
+            onMouseLeave={(e) => {
+              if (!isSelected) e.currentTarget.style.background = 'transparent';
+            }}
           >
-            {/* Avatar */}
-            <div className="feed-avatar">
+            <div style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              background: token.logo ? 'transparent' : '#2a2a2a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              fontWeight: 700,
+              color: '#e5e5e5',
+              flexShrink: 0,
+            }}>
               {token.logo ? (
                 <img
                   src={token.logo}
                   alt={token.symbol}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                     const parent = (e.target as HTMLImageElement).parentElement;
@@ -94,26 +123,24 @@ export default function DiscoverFeed({
               )}
             </div>
 
-            {/* Info */}
-            <div className="feed-info">
-              <div className="feed-name">
-                <span className="feed-symbol">{token.symbol || '???'}</span>
-                <span className="feed-meta">
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 600, fontSize: '13px', color: '#e5e5e5' }}>{token.symbol || '???'}</span>
+                <span style={{ fontSize: '10px', color: '#666' }}>
                   {getTimeAgo(age * 60 * 1000)} • {token.dexId}
                 </span>
               </div>
-              <div className="feed-stats">
+              <div style={{ display: 'flex', gap: '8px', fontSize: '10px', color: '#666', flexWrap: 'wrap' }}>
                 <span>MC ${formatNumber(mcap)}</span>
                 <span>Liq ${formatNumber(liq)}</span>
                 <span>Vol ${formatNumber(vol)}</span>
-                <span className={change >= 0 ? 'positive' : 'negative'}>
+                <span style={{ color: change >= 0 ? '#00C805' : '#FF3B30', fontWeight: 500 }}>
                   {change > 0 ? '+' : ''}{change.toFixed(2)}%
                 </span>
               </div>
             </div>
 
-            {/* Price */}
-            <div className="feed-price">
+            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#e5e5e5', whiteSpace: 'nowrap' }}>
               ${price < 0.01 ? price.toFixed(6) : price.toFixed(4)}
             </div>
           </div>
