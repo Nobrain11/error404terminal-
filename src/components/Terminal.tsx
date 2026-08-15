@@ -28,7 +28,7 @@ export default function Terminal() {
     const tab = params.get('tab');
     const token = params.get('token');
     if (tab === 'discover' || tab === 'pulse' || tab === 'tracker' || tab === 'portfolio' || tab === 'settings') {
-      setActiveTab(tab);
+      setActiveTab(tab as any);
     }
     if (token) {
       setTradeToken(token);
@@ -149,7 +149,7 @@ export default function Terminal() {
             borderRight: selectedToken ? '1px solid #1a1a1a' : 'none',
             transition: 'flex 0.3s ease',
           }}>
-            {selectedToken ? renderMainContent() : renderMainContent()}
+            {renderMainContent()}
           </div>
 
           {selectedToken && (
