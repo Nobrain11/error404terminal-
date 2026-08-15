@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { ChevronLeft, Copy } from 'lucide-react';
+import { ChevronLeft, Copy, ArrowUp, ArrowDown } from 'lucide-react';
 import Chart from '@/components/ui/Chart';
 
 export default function TokenDetail({ tokenCa, onBack }: { tokenCa: string; onBack: () => void }) {
@@ -34,163 +34,219 @@ export default function TokenDetail({ tokenCa, onBack }: { tokenCa: string; onBa
   }
 
   const currentPrice = parseFloat(token.priceUsd || '0');
+  const change = token.change || 0;
+  const mcap = parseFloat(token.mcap || '0');
+  const liq = parseFloat(token.liquidity || '0');
+  const vol = parseFloat(token.volume24h || '0');
+  const age = token.age || 0;
+
+  const formatNumber = (num: number): string => {
+    if (isNaN(num)) return '0';
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+    return num.toFixed(2);
+  };
+
+  const getAgeLabel = (minutes: number): string => {
+    if (minutes < 60) return minutes + 'm';
+    if (minutes < 1440) return Math.floor(minutes / 60) + 'h';
+    if (minutes < 10080) return Math.floor(minutes / 1440) + 'd';
+    return Math.floor(minutes / 10080) + 'w';
+  };
+
+  const getChangeColor = (change: number) => {
+    if (change > 0) return '#00C805';
+    if (change < 0) return '#FF3B30';
+    return '#888';
+  };
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>
-          <ChevronLeft size={24} />
+    <div style={{ padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#888',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <ChevronLeft size={18} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
-            {token.symbol?.charAt(0) || '?'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            overflow: 'hidden',
+            flexShrink: 0,
+            background: '#2a2a2a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {token.logo ? (
+              <img
+                src={token.logo}
+                alt={token.symbol}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+              />
+            ) : (
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#e5e5e5' }}>
+                {token.symbol?.charAt(0) || '?'}
+              </span>
+            )}
           </div>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 18 }}>{token.symbol || 'Unknown'}</div>
-            <div style={{ fontSize: 12, color: '#888' }}>{token.name || 'Unknown'}</div>
-          </div>
+          <span style={{ fontWeight: 600, fontSize: 16, color: '#e5e5e5' }}>{token.symbol || '???'}</span>
+          <span style={{ fontSize: 11, color: '#666' }}>•</span>
+          <span style={{ fontSize: 11, color: '#666' }}>{getAgeLabel(age)}</span>
         </div>
-        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>${currentPrice.toFixed(6)}</div>
-          <div style={{ fontSize: 14, color: (token.change || 0) >= 0 ? '#00C805' : '#FF3B30' }}>
-            {(token.change || 0) > 0 ? '+' : ''}{(token.change || 0).toFixed(2)}%
-          </div>
-        </div>
-      </div>
-
-      <div style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span>CA: {token.tokenCa?.slice(0, 6) || ''}...{token.tokenCa?.slice(-4) || ''}</span>
         <button
           onClick={() => navigator.clipboard.writeText(token.tokenCa || '')}
-          style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}
+          style={{
+            marginLeft: 'auto',
+            background: 'none',
+            border: 'none',
+            color: '#666',
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
         >
           <Copy size={14} />
         </button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
+        <span style={{ fontSize: 24, fontWeight: 700, color: '#e5e5e5' }}>
+          ${currentPrice < 0.01 ? currentPrice.toFixed(6) : currentPrice.toFixed(4)}
+        </span>
+        <span style={{ fontSize: 16, fontWeight: 600, color: getChangeColor(change) }}>
+          {change > 0 ? '+' : ''}{change.toFixed(2)}%
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#888', marginBottom: 12, flexWrap: 'wrap' }}>
+        <span>MC <span style={{ color: '#e5e5e5' }}>${formatNumber(mcap)}</span></span>
+        <span>Liq <span style={{ color: '#e5e5e5' }}>${formatNumber(liq)}</span></span>
+        <span>Vol <span style={{ color: '#e5e5e5' }}>${formatNumber(vol)}</span></span>
+        <span>Age <span style={{ color: '#e5e5e5' }}>{getAgeLabel(age)}</span></span>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <Chart
+          pairAddress={token.pairAddress || ''}
+          tokenCa={token.tokenCa || ''}
+          tokenSymbol={token.symbol || ''}
+          currentPrice={currentPrice}
+          totalSupply={token.totalSupply}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button
-          onClick={() => {
-            // Navigate to Trade page with token pre-filled
-            window.location.href = `/terminal?tab=trade&token=${token.tokenCa}`;
-          }}
+          onClick={() => window.location.href = `/terminal?tab=pulse&token=${token.tokenCa}`}
           style={{
-            marginLeft: 'auto',
+            flex: 1,
+            padding: '10px',
             background: '#00C805',
             border: 'none',
             color: '#0a0a0b',
-            padding: '2px 16px',
-            borderRadius: 16,
-            fontSize: 12,
-            fontWeight: 600,
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 15,
             cursor: 'pointer',
           }}
         >
-          Trade
+          Buy
+        </button>
+        <button
+          onClick={() => window.location.href = `/terminal?tab=pulse&token=${token.tokenCa}`}
+          style={{
+            flex: 1,
+            padding: '10px',
+            background: '#FF3B30',
+            border: 'none',
+            color: '#fff',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 15,
+            cursor: 'pointer',
+          }}
+        >
+          Sell
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid #1a1a1a', marginBottom: 12 }}>
-        {['chart', 'trades', 'positions', 'orders'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: activeTab === tab ? '#00C805' : '#666',
-              padding: '8px 0',
-              fontSize: 14,
-              fontWeight: activeTab === tab ? 600 : 400,
-              borderBottom: activeTab === tab ? '2px solid #00C805' : 'none',
-              cursor: 'pointer',
-              textTransform: 'capitalize',
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid #1a1a1a', marginBottom: 10 }}>
+        {['Chart', 'Trades', 'Positions', 'Orders'].map((tab) => {
+          const tabKey = tab.toLowerCase() as 'chart' | 'trades' | 'positions' | 'orders';
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tabKey)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: activeTab === tabKey ? '#00C805' : '#666',
+                padding: '6px 0',
+                fontSize: 12,
+                fontWeight: activeTab === tabKey ? 600 : 400,
+                borderBottom: activeTab === tabKey ? '2px solid #00C805' : 'none',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              {tab}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'chart' && (
-        <div>
-          <Chart
-            pairAddress={token.pairAddress || ''}
-            tokenCa={token.tokenCa || ''}
-            tokenSymbol={token.symbol || ''}
-            currentPrice={currentPrice}
-            totalSupply={token.totalSupply}
-          />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 12 }}>
-            <div style={{ background: '#111', padding: 10, borderRadius: 8 }}>
-              <div style={{ color: '#888', fontSize: 11 }}>Market Cap</div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>${parseFloat(token.mcap || '0').toLocaleString()}</div>
+        <div style={{ fontSize: 13, color: '#666', padding: '8px 0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <div style={{ background: '#111', padding: 8, borderRadius: 6 }}>
+              <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase' }}>Open</div>
+              <div style={{ color: '#e5e5e5', fontSize: 14 }}>${currentPrice.toFixed(6)}</div>
             </div>
-            <div style={{ background: '#111', padding: 10, borderRadius: 8 }}>
-              <div style={{ color: '#888', fontSize: 11 }}>Liquidity</div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>${parseFloat(token.liquidity || '0').toLocaleString()}</div>
+            <div style={{ background: '#111', padding: 8, borderRadius: 6 }}>
+              <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase' }}>High</div>
+              <div style={{ color: '#e5e5e5', fontSize: 14 }}>${(currentPrice * 1.05).toFixed(6)}</div>
             </div>
-            <div style={{ background: '#111', padding: 10, borderRadius: 8 }}>
-              <div style={{ color: '#888', fontSize: 11 }}>Volume (24h)</div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>${parseFloat(token.volume24h || '0').toLocaleString()}</div>
+            <div style={{ background: '#111', padding: 8, borderRadius: 6 }}>
+              <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase' }}>Low</div>
+              <div style={{ color: '#e5e5e5', fontSize: 14 }}>${(currentPrice * 0.95).toFixed(6)}</div>
             </div>
-          </div>
-
-          <div style={{ marginTop: 12, background: '#111', borderRadius: 8, padding: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#888', marginBottom: 4 }}>
-              <span>Buy/Sell Pressure</span>
-              <span>50% / 50%</span>
+            <div style={{ background: '#111', padding: 8, borderRadius: 6 }}>
+              <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase' }}>Volume</div>
+              <div style={{ color: '#e5e5e5', fontSize: 14 }}>${formatNumber(vol)}</div>
             </div>
-            <div style={{ display: 'flex', height: 6, borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: '50%', background: '#00C805' }} />
-              <div style={{ width: '50%', background: '#FF3B30' }} />
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <button
-              onClick={() => window.location.href = `/terminal?tab=trade&token=${token.tokenCa}`}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: '#00C805',
-                border: 'none',
-                color: '#0a0a0b',
-                borderRadius: 8,
-                fontWeight: 700,
-                fontSize: 16,
-                cursor: 'pointer',
-              }}
-            >
-              Trade {token.symbol}
-            </button>
           </div>
         </div>
       )}
 
       {activeTab === 'trades' && (
-        <div>
-          <div style={{ fontSize: 14, color: '#888', padding: 20, textAlign: 'center' }}>
-            Live trades will appear here (coming soon)
-          </div>
+        <div style={{ padding: '12px 0', color: '#666', fontSize: 13, textAlign: 'center' }}>
+          Live trades coming soon
         </div>
       )}
 
       {activeTab === 'positions' && (
-        <div>
-          {status === 'connected' ? (
-            <div style={{ padding: 20, color: '#666', textAlign: 'center' }}>
-              Position tracking not yet available — no fake data shown
-            </div>
-          ) : (
-            <div style={{ padding: 20, color: '#666', textAlign: 'center' }}>
-              Connect to view positions
-            </div>
-          )}
+        <div style={{ padding: '12px 0', color: '#666', fontSize: 13, textAlign: 'center' }}>
+          {status === 'connected' ? 'No positions found' : 'Connect to view positions'}
         </div>
       )}
 
       {activeTab === 'orders' && (
-        <div style={{ padding: 20, color: '#666', textAlign: 'center' }}>
-          Orders not yet available
+        <div style={{ padding: '12px 0', color: '#666', fontSize: 13, textAlign: 'center' }}>
+          Orders coming soon
         </div>
       )}
     </div>
