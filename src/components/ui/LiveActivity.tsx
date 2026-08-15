@@ -15,7 +15,6 @@ export default function LiveActivity() {
   const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
-    // Fetch initial activities and then poll
     const fetchActivities = async () => {
       try {
         const res = await fetch('/api/market/activity');
@@ -33,18 +32,8 @@ export default function LiveActivity() {
   }, []);
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '16px',
-      padding: '4px 16px',
-      overflowX: 'auto',
-      whiteSpace: 'nowrap',
-      height: '100%',
-      fontSize: '12px',
-      color: '#888',
-    }}>
-      <span style={{ color: '#00C805', fontWeight: 600 }}>● LIVE</span>
+    <div className="live-activity">
+      <span className="live-dot">● LIVE</span>
       {activities.slice(0, 10).map((act) => {
         let color = '#888';
         let icon = '';
