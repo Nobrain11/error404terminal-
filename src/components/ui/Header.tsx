@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { useState, useEffect } from 'react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface HeaderProps {
   onSearch: (query: string) => void;
@@ -11,6 +12,7 @@ export default function Header({ onSearch }: HeaderProps) {
   const { status, walletAddress, connect, disconnect } = useAuth();
   const [search, setSearch] = useState('');
   const [balance, setBalance] = useState<string | null>(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -58,7 +60,7 @@ export default function Header({ onSearch }: HeaderProps) {
         <span style={{ color: '#888', fontSize: '11px', fontWeight: 300, marginLeft: '4px' }}>TERMINAL</span>
       </div>
 
-      <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+      <div style={{ position: 'relative', flex: 1, maxWidth: isMobile ? '120px' : '400px' }}>
         <span style={{
           position: 'absolute',
           left: '10px',
@@ -69,7 +71,7 @@ export default function Header({ onSearch }: HeaderProps) {
         }}>🔍</span>
         <input
           type="text"
-          placeholder="Search token or contract..."
+          placeholder="Search..."
           value={search}
           onChange={handleSearchChange}
           style={{
@@ -87,11 +89,15 @@ export default function Header({ onSearch }: HeaderProps) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexShrink: 0 }}>
-        <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>⭐</button>
-        <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>🔔</button>
-        <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>⚙️</button>
+        {!isMobile && (
+          <>
+            <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>⭐</button>
+            <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>🔔</button>
+            <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', fontSize: '18px' }}>⚙️</button>
+          </>
+        )}
 
-        {status === 'connected' && walletAddress && (
+        {status === 'connected' && walletAddress && !isMobile && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -106,7 +112,7 @@ export default function Header({ onSearch }: HeaderProps) {
             </span>
             {balance && (
               <span style={{ color: '#00C805', fontSize: '12px', fontWeight: 600 }}>
-                {parseFloat(balance).toFixed(4)} ETH
+                {parseFloat(balance).toFixed(4)}
               </span>
             )}
           </div>
@@ -124,20 +130,22 @@ export default function Header({ onSearch }: HeaderProps) {
             fontSize: '12px',
             cursor: 'pointer',
             height: '28px',
+            whiteSpace: 'nowrap',
           }}
         >
-          {status === 'connected' ? 'Wallet' : status === 'connecting' ? '...' : 'Connect'}
+          {status === 'connected' ? (isMobile ? 'Wallet' : 'Wallet') : status === 'connecting' ? '...' : 'Connect'}
         </button>
 
-        <button style={{
-          background: 'none',
-          border: 'none',
-          color: '#888',
-          cursor: 'pointer',
-          display: 'none',
-          fontSize: '20px',
-          '@media (max-width: 768px)': { display: 'flex' },
-        }}>☰</button>
+        {isMobile && (
+          <button style={{
+            background: 'none',
+            border: 'none',
+            color: '#888',
+            cursor: 'pointer',
+            fontSize: '20px',
+            padding: '4px',
+          }}>☰</button>
+        )}
       </div>
     </header>
   );
