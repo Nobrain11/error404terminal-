@@ -17,7 +17,12 @@ interface Token {
   age: number;
 }
 
-export default function DiscoverPage({ onSelectToken }: { onSelectToken: (ca: string) => void }) {
+interface DiscoverPageProps {
+  onSelectToken: (ca: string) => void;
+  onTradeToken: (ca: string) => void;
+}
+
+export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPageProps) {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('trending');
@@ -42,21 +47,17 @@ export default function DiscoverPage({ onSelectToken }: { onSelectToken: (ca: st
     }
   };
 
-  // Initial fetch and filter/search change
   useEffect(() => {
     fetchTokens(true);
-    // Clear any pending timeout
     if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-    // Set up polling every 15s, but only after first fetch
     fetchTimeoutRef.current = setInterval(() => {
-      fetchTokens(false); // don't show loading on subsequent fetches
+      fetchTokens(false);
     }, 15000);
     return () => {
       if (fetchTimeoutRef.current) clearInterval(fetchTimeoutRef.current);
     };
   }, [filter, search]);
 
-  // Handle search debounce
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
   };
@@ -167,15 +168,17 @@ export default function DiscoverPage({ onSelectToken }: { onSelectToken: (ca: st
                   <Star size={16} />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onSelectToken(token.tokenCa); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTradeToken(token.tokenCa);
+                  }}
                   style={{ background: '#00C805', border: 'none', color: '#0a0a0b', borderRadius: 16, padding: '2px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Buy
+                  Trade
                 </button>
               </div>
             </div>
           ))}
-          {/* Show loading indicator at bottom while fetching in background */}
           {loading && tokens.length > 0 && (
             <div style={{ textAlign: 'center', padding: '8px', color: '#888', fontSize: 13 }}>
               Updating...
