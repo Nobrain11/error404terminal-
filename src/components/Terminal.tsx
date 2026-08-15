@@ -27,7 +27,6 @@ export default function Terminal() {
     const ca = params.get('token');
     if (ca) {
       setSelectedTokenCa(ca);
-      // Fetch token detail by CA and set as selectedToken
       fetch(`/api/market/tokens?q=${encodeURIComponent(ca)}`)
         .then(res => res.json())
         .then(data => {
@@ -42,7 +41,6 @@ export default function Terminal() {
   const handleSelectToken = (token: Token) => {
     setSelectedToken(token);
     setSelectedTokenCa(token.tokenCa);
-    // Update URL without page reload
     const url = new URL(window.location.href);
     url.searchParams.set('token', token.tokenCa);
     window.history.pushState({}, '', url.toString());
@@ -50,20 +48,15 @@ export default function Terminal() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Optionally filter the feed
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#0a0a0b', overflow: 'hidden' }}>
-      {/* Header */}
       <Header onSearch={handleSearch} />
 
-      {/* Main body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Left sidebar navigation */}
         <SidebarNav activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
 
-        {/* Left: Discovery feed */}
         <div style={{
           flex: isDesktop ? '0 0 380px' : isTablet ? '0 0 320px' : '1',
           overflowY: 'auto',
@@ -79,7 +72,6 @@ export default function Terminal() {
           />
         </div>
 
-        {/* Center: Selected token panel */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
@@ -94,7 +86,6 @@ export default function Terminal() {
           />
         </div>
 
-        {/* Right: Trade panel (only on desktop) */}
         {isDesktop && selectedToken && (
           <div style={{
             flex: '0 0 340px',
@@ -108,7 +99,6 @@ export default function Terminal() {
         )}
       </div>
 
-      {/* Bottom: Live activity (only if not too small) */}
       {isTablet && (
         <div style={{
           borderTop: '1px solid #1a1a1a',
