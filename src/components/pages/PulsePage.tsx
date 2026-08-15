@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import Chart from '@/components/ui/Chart';
 import { ArrowUp, ArrowDown } from 'lucide-react';
@@ -26,6 +26,9 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('5m');
   const [view, setView] = useState<'chart+table' | 'chart' | 'table'>('chart+table');
+  const [newTrade, setNewTrade] = useState<{ side: 'buy' | 'sell'; txHash: string } | null>(null);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (!tokenCa) return;
@@ -43,22 +46,60 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
     fetchToken();
   }, [tokenCa]);
 
-  useEffect(() => {
-    if (!tokenCa) return;
-    const fetchTrades = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/market/transactions?pair=${token?.pairAddress || ''}&limit=20`);
-        const data = await res.json();
-        if (data.trades) {
-          setTrades(data.trades);
+  const fetchTrades = async (since?: number) => {
+    if (!token) return;
+    try {
+      const url = `/api/market/transactions?pair=${token.pairAddress}&limit=30${since ? `&since=${since}` : ''}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.trades && data.trades.length > 0) {
+        const formattedTrades = data.trades.map((t: any) => ({
+          ...t,
+          time: getTimeAgo(new Date(t.time).getTime()),
+        }));
+        if (since && data.trades.length > 0) {
+          // Check for new trades
+          const latest = data.trades[0];
+          const existing = trades.length > 0 ? trades[0] : null;
+          if (existing && latest.txHash !== existing.txHash) {
+            setNewTrade({ side: latest.side, txHash: latest.txHash });
+            setTimeout(() => setNewTrade(null), 3000);
+          }
+          setTrades(prev => {
+            const newOnes = data.trades.filter((t: any) => 
+              !prev.some(p => p.txHash === t.txHash)
+            );
+            return [...newOnes, ...prev].slice(0, 30);
+          });
+        } else {
+          setTrades(formattedTrades);
         }
-      } catch (e) {
-        console.error(e);
       }
-      setLoading(false);
+      lastFetchRef.current = Date.now();
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const getTimeAgo = (timestamp: number): string => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
+    return Math.floor(seconds / 86400) + 'd';
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    fetchTrades();
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => {
+      fetchTrades(Math.floor(lastFetchRef.current / 1000));
+    }, 2000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
     };
-    if (token) fetchTrades();
   }, [token]);
 
   const formatNumber = (num: string | number): string => {
@@ -102,7 +143,7 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
 
   return (
     <div style={{ padding: '4px 0' }}>
-      {/* Token header with logo */}
+      {/* Token header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
@@ -144,6 +185,7 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         </div>
       </div>
 
+      {/* View toggle */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 8, background: '#111', borderRadius: 6, padding: 2 }}>
         {['chart+table', 'chart', 'table'].map((v) => (
           <button
@@ -167,6 +209,7 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         ))}
       </div>
 
+      {/* Timeframe */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
         {timeframes.map((tf) => (
           <button
@@ -188,6 +231,7 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         ))}
       </div>
 
+      {/* Chart */}
       {(view === 'chart+table' || view === 'chart') && (
         <div style={{ marginBottom: 8 }}>
           <Chart
@@ -200,10 +244,16 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
         </div>
       )}
 
+      {/* Trades table */}
       {(view === 'chart+table' || view === 'table') && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5' }}>Trades</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5' }}>
+              Live Trades
+              <span style={{ fontSize: 10, fontWeight: 400, color: '#666', marginLeft: 8 }}>
+                ● live
+              </span>
+            </span>
             <div style={{ display: 'flex', gap: 4, fontSize: 11, color: '#888' }}>
               <button style={{ background: 'none', border: 'none', color: '#00C805', cursor: 'pointer' }}>TXN ↓</button>
               <button style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>MC $</button>
@@ -212,12 +262,12 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
             </div>
           </div>
 
-          {loading ? (
+          {loading && trades.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading trades...</div>
           ) : trades.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No trades yet</div>
           ) : (
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ maxHeight: 350, overflowY: 'auto' }}>
               {trades.map((trade, i) => (
                 <div
                   key={i}
@@ -229,6 +279,10 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
                     borderBottom: '1px solid #111',
                     fontSize: 12,
                     alignItems: 'center',
+                    ...(newTrade?.txHash === trade.txHash ? {
+                      background: newTrade.side === 'buy' ? 'rgba(0,200,5,0.1)' : 'rgba(255,59,48,0.1)',
+                      borderRadius: 4,
+                    } : {}),
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: trade.side === 'buy' ? '#00C805' : '#FF3B30' }}>
@@ -237,12 +291,22 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
                   </div>
                   <div style={{ textAlign: 'right', color: '#e5e5e5' }}>${formatNumber(trade.marketCap || '0')}</div>
                   <div style={{ textAlign: 'right', color: '#e5e5e5' }}>${trade.usdSize}</div>
-                  <div style={{ textAlign: 'right', color: '#666', fontSize: 11 }}>{trade.trader?.slice(0, 6) || '...'}</div>
+                  <div style={{ textAlign: 'right', color: '#666', fontSize: 11 }}>
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_EXPLORER}/tx/${trade.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#666', textDecoration: 'none' }}
+                    >
+                      {trade.trader?.slice(0, 6) || '...'}
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
+          {/* Stats */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr 1fr',
@@ -257,20 +321,23 @@ export default function PulsePage({ initialTokenCa }: PulsePageProps) {
             </div>
             <div>
               <div style={{ fontSize: 10, color: '#888' }}>Buys</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#00C805' }}>6.12K/$1.20M</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#00C805' }}>{trades.filter(t => t.side === 'buy').length} txns</div>
             </div>
             <div>
               <div style={{ fontSize: 10, color: '#888' }}>Sells</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#FF3B30' }}>3.31K/$1.59M</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#FF3B30' }}>{trades.filter(t => t.side === 'sell').length} txns</div>
             </div>
             <div>
-              <div style={{ fontSize: 10, color: '#888' }}>Net Vol</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e5e5' }}>$392K</div>
+              <div style={{ fontSize: 10, color: '#888' }}>Buy/Sell Ratio</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e5e5' }}>
+                {trades.filter(t => t.side === 'buy').length / (trades.length || 1) * 100}%
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Buy/Sell buttons */}
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <button
           onClick={() => window.location.href = `/terminal?tab=pulse&token=${token.tokenCa}`}
