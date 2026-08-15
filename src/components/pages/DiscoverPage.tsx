@@ -62,7 +62,6 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
     setSearch(e.target.value);
   };
 
-  // Format number with K/M/B suffix
   const formatNumber = (num: string | number): string => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
     if (isNaN(n)) return '0';
@@ -72,14 +71,12 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
     return n.toFixed(2);
   };
 
-  // Get change color
   const getChangeColor = (change: number) => {
     if (change > 0) return '#00C805';
     if (change < 0) return '#FF3B30';
     return '#888';
   };
 
-  // Get age label
   const getAgeLabel = (minutes: number): string => {
     if (minutes < 60) return minutes + 'm';
     if (minutes < 1440) return Math.floor(minutes / 60) + 'h';
@@ -87,7 +84,6 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
     return Math.floor(minutes / 10080) + 'w';
   };
 
-  // Filter labels with icons
   const filterOptions = [
     { id: 'trending', label: 'Top', icon: TrendingUp },
     { id: 'new', label: 'New', icon: Clock },
@@ -98,13 +94,11 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
 
   return (
     <div style={{ padding: '4px 0' }}>
-      {/* Status bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0 8px 0', fontSize: 11, color: '#666', borderBottom: '1px solid #1a1a1a', marginBottom: 8 }}>
         <span>🟢 LIVE · {tokens.length} pairs</span>
         <span>{Math.floor((Date.now() - lastUpdated.getTime()) / 1000)}s ago</span>
       </div>
 
-      {/* Filter tabs - compact */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
         {filterOptions.map((f) => {
           const Icon = f.icon;
@@ -135,7 +129,6 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
         })}
       </div>
 
-      {/* Search - compact */}
       <div style={{ position: 'relative', marginBottom: 10 }}>
         <input
           type="text"
@@ -156,7 +149,6 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
         <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
       </div>
 
-      {/* Token list - Base Bot style compact cards */}
       {loading && tokens.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: '#666' }}>
           <div style={{ display: 'inline-block', width: 24, height: 24, border: '2px solid #1a1a1a', borderTop: '2px solid #00C805', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
@@ -195,7 +187,7 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
                 onMouseLeave={(e) => e.currentTarget.style.background = '#111'}
               >
                 {/* Token info - compact left side */}
-                <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <div style={{
                     width: 28,
                     height: 28,
@@ -228,7 +220,6 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
                   </div>
                 </div>
 
-                {/* Price and change - compact right side */}
                 <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: '#e5e5e5' }}>
                     ${price < 0.01 ? price.toFixed(6) : price.toFixed(4)}
@@ -238,7 +229,6 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
                   </div>
                 </div>
 
-                {/* Trade button - small and green */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
