@@ -15,7 +15,6 @@ import TokenDetail from './pages/TokenDetail';
 export default function Terminal() {
   const [activeTab, setActiveTab] = useState<'discover' | 'trade' | 'scanner' | 'portfolio'>('discover');
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
-  const { status, user, walletAddress } = useAuth();
 
   const renderPage = () => {
     if (selectedToken) {
@@ -36,10 +35,18 @@ export default function Terminal() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0a0a0b', maxWidth: 430, margin: '0 auto' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: '100vh', 
+      backgroundColor: '#0a0a0b',
+      maxWidth: '480px', // wider than before but still readable
+      margin: '0 auto',
+      paddingBottom: '70px', // space for bottom nav
+    }}>
       <Header />
       <TickerTape />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 70px 12px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
         {renderPage()}
       </div>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
