@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/auth-context';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Star, Bell, Settings, Menu } from 'lucide-react';
 
 interface HeaderProps {
@@ -30,7 +30,7 @@ export default function Header({ onSearch }: HeaderProps) {
   };
 
   // Fetch balance when connected
-  useState(() => {
+  useEffect(() => {
     if (status === 'connected' && walletAddress) {
       fetch('/api/wallet/balance', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -38,6 +38,8 @@ export default function Header({ onSearch }: HeaderProps) {
         .then(res => res.json())
         .then(data => setBalance(data.balance || '0'))
         .catch(() => setBalance('0'));
+    } else {
+      setBalance(null);
     }
   }, [status, walletAddress]);
 
