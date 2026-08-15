@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, BarChart2, Search, User, Settings } from 'lucide-react';
+import { Home, Pulse, Eye, User, Settings } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: 'discover' | 'pulse' | 'tracker' | 'portfolio' | 'settings';
@@ -10,8 +10,8 @@ interface BottomNavProps {
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs = [
     { id: 'discover', label: 'Discover', icon: Home },
-    { id: 'pulse', label: 'Pulse', icon: BarChart2 },
-    { id: 'tracker', label: 'Tracker', icon: Search },
+    { id: 'pulse', label: 'Pulse', icon: Pulse },
+    { id: 'tracker', label: 'Tracker', icon: Eye },
     { id: 'portfolio', label: 'Portfolio', icon: User },
     { id: 'settings', label: 'Settings', icon: Settings },
   ] as const;
