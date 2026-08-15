@@ -1,82 +1,26 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Search, ChevronDown, ArrowUp, ArrowDown, Flame, Clock, TrendingUp, Zap } from 'lucide-react';
+import { Token } from '@/lib/types';
+import { getTimeAgo, formatNumber } from '@/lib/utils';
 
-interface Token {
-  pairAddress: string;
-  tokenCa: string;
-  name: string;
-  symbol: string;
-  dexId: string;
-  priceUsd: string;
-  change: number;
-  mcap: string;
-  liquidity: string;
-  volume24h: string;
-  age: number;
-  logo?: string;
+interface DiscoverFeedProps {
+  category: string;
+  searchQuery: string;
+  onSelectToken: (token: Token) => void;
+  selectedTokenCa: string | null;
 }
 
-interface DiscoverPageProps {
-  onSelectToken: (ca: string) => void;
-  onTradeToken: (ca: string) => void;
-}
-
-// Helper to generate a deterministic color from a string
-function getColorFromAddress(address: string): string {
-  let hash = 0;
-  for (let i = 0; i < address.length; i++) {
-    hash = address.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 70%, 45%)`;
-}
-
-// Helper to generate a bright color for letter
-function getContrastColor(hex: string): string {
-  // Simple: return white or black based on brightness
-  const r = parseInt(hex.slice(1,3), 16);
-  const g = parseInt(hex.slice(3,5), 16);
-  const b = parseInt(hex.slice(5,7), 16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 128 ? '#0a0a0b' : '#ffffff';
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  // Convert HSL to hex for contrast calculation
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
-  const m = l - c / 2;
-  let r, g, b;
-  if (h < 60) { r = c; g = x; b = 0; }
-  else if (h < 120) { r = x; g = c; b = 0; }
-  else if (h < 180) { r = 0; g = c; b = x; }
-  else if (h < 240) { r = 0; g = x; b = c; }
-  else if (h < 300) { r = x; g = 0; b = c; }
-  else { r = c; g = 0; b = x; }
-  r = Math.round((r + m) * 255);
-  g = Math.round((g + m) * 255);
-  b = Math.round((b + m) * 255);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPageProps) {
+export default function DiscoverFeed({ category, searchQuery, onSelectToken, selectedTokenCa }: DiscoverFeedProps) {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('top');
-  const [search, setSearch] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [chain, setChain] = useState('ROBINHOOD');
-  const [timeframe, setTimeframe] = useState('5m');
-  const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
-  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const fetchInterval = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTokens = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const url = `/api/market/tokens?filter=${filter}${search ? `&q=${encodeURIComponent(search)}` : ''}`;
+      const url = `/api/market/tokens?filter=${category}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.tokens) {
@@ -92,367 +36,122 @@ export default function DiscoverPage({ onSelectToken, onTradeToken }: DiscoverPa
 
   useEffect(() => {
     fetchTokens(true);
-    if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-    fetchTimeoutRef.current = setInterval(() => {
+    if (fetchInterval.current) clearInterval(fetchInterval.current);
+    fetchInterval.current = setInterval(() => {
       fetchTokens(false);
     }, 15000);
     return () => {
-      if (fetchTimeoutRef.current) clearInterval(fetchTimeoutRef.current);
+      if (fetchInterval.current) clearInterval(fetchInterval.current);
     };
-  }, [filter, search]);
+  }, [category, searchQuery]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowTimeframeDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  if (loading && tokens.length === 0) {
+    return (
+      <div style={{ padding: '12px', color: '#666', textAlign: 'center', fontSize: '13px' }}>
+        Loading tokens...
+      </div>
+    );
+  }
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-  };
-
-  const formatNumber = (num: string | number): string => {
-    const n = typeof num === 'string' ? parseFloat(num) : num;
-    if (isNaN(n)) return '0';
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-    if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
-    return n.toFixed(2);
-  };
-
-  const getChangeColor = (change: number) => {
-    if (change > 0) return '#00C805';
-    if (change < 0) return '#FF3B30';
-    return '#888';
-  };
-
-  const getAgeLabel = (minutes: number): string => {
-    if (minutes < 60) return minutes + 'm';
-    if (minutes < 1440) return Math.floor(minutes / 60) + 'h';
-    if (minutes < 10080) return Math.floor(minutes / 1440) + 'd';
-    return Math.floor(minutes / 10080) + 'w';
-  };
-
-  const filterOptions = [
-    { id: 'top', label: 'Top', icon: TrendingUp },
-    { id: 'trending', label: 'Trending', icon: Flame },
-    { id: 'mostviewed', label: 'Most Viewed', icon: Zap },
-    { id: 'surge', label: 'Surge', icon: Clock },
-  ];
-
-  const chainOptions = ['All chains', 'ROBINHOOD', 'ETH'];
-  const timeframeOptions = ['1m', '5m', '15m', '30m', '1h', '4h', '24h'];
+  if (tokens.length === 0) {
+    return (
+      <div style={{ padding: '12px', color: '#666', textAlign: 'center', fontSize: '13px' }}>
+        No tokens found
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '4px 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <button
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#888',
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
-        >
-          ✕
-        </button>
-        <button
-          style={{
-            background: '#1a1a1a',
-            border: 'none',
-            color: '#e5e5e5',
-            padding: '4px 16px',
-            borderRadius: 16,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Deposit
-        </button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
+      {tokens.slice(0, 100).map((token) => {
+        const isSelected = token.tokenCa === selectedTokenCa;
+        const change = token.change || 0;
+        const price = parseFloat(token.priceUsd || '0');
+        const mcap = parseFloat(token.mcap || '0');
+        const liq = parseFloat(token.liquidity || '0');
+        const vol = parseFloat(token.volume24h || '0');
+        const age = token.age || 0;
 
-      <div style={{ display: 'flex', gap: 2, marginBottom: 10 }}>
-        {filterOptions.map((f) => {
-          const Icon = f.icon;
-          const isActive = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '4px 12px',
-                borderRadius: 16,
-                background: isActive ? '#00C805' : 'transparent',
-                color: isActive ? '#0a0a0b' : '#888',
-                border: isActive ? 'none' : '1px solid #2a2a2a',
-                fontSize: 12,
-                fontWeight: isActive ? 600 : 400,
-                cursor: 'pointer',
-              }}
-            >
-              <Icon size={12} />
-              {f.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 2, background: '#111', borderRadius: 16, padding: '2px' }}>
-          {chainOptions.map((c) => (
-            <button
-              key={c}
-              onClick={() => setChain(c)}
-              style={{
-                padding: '2px 10px',
-                borderRadius: 14,
-                background: chain === c ? '#2a2a2a' : 'transparent',
-                color: chain === c ? '#e5e5e5' : '#666',
-                border: 'none',
-                fontSize: 11,
-                fontWeight: chain === c ? 600 : 400,
-                cursor: 'pointer',
-              }}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        <div ref={dropdownRef} style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowTimeframeDropdown(!showTimeframeDropdown)}
+        return (
+          <div
+            key={token.pairAddress}
+            onClick={() => onSelectToken(token)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              borderRadius: 14,
-              background: '#1a1a1a',
-              color: '#e5e5e5',
-              border: 'none',
-              fontSize: 11,
-              fontWeight: 500,
+              display: 'grid',
+              gridTemplateColumns: '28px 1fr auto',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '4px',
               cursor: 'pointer',
-              height: 24,
+              background: isSelected ? '#1a1a1a' : 'transparent',
+              borderLeft: isSelected ? '2px solid #00C805' : '2px solid transparent',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isSelected) e.currentTarget.style.background = '#151515';
+            }}
+            onMouseLeave={(e) => {
+              if (!isSelected) e.currentTarget.style.background = 'transparent';
             }}
           >
-            {timeframe}
-            <ChevronDown size={12} />
-          </button>
-          {showTimeframeDropdown && (
+            {/* Avatar */}
             <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              background: '#1a1a1a',
-              borderRadius: 8,
-              border: '1px solid #2a2a2a',
-              padding: '4px 0',
-              zIndex: 10,
-              minWidth: 60,
-              marginTop: 2,
-            }}>
-              {timeframeOptions.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => {
-                    setTimeframe(t);
-                    setShowTimeframeDropdown(false);
-                  }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '4px 12px',
-                    background: 'none',
-                    border: 'none',
-                    color: timeframe === t ? '#00C805' : '#888',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ position: 'relative', flex: 1, minWidth: 120 }}>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={handleSearchChange}
-            style={{
-              width: '100%',
-              padding: '2px 8px 2px 24px',
-              background: '#111',
-              border: '1px solid #2a2a2a',
-              borderRadius: 14,
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              background: token.logo ? 'transparent' : '#2a2a2a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              fontWeight: 700,
               color: '#e5e5e5',
-              fontSize: 11,
-              outline: 'none',
-              height: 24,
-            }}
-          />
-          <Search size={12} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
-        </div>
-      </div>
-
-      <div style={{ fontSize: 20, fontWeight: 700, color: '#e5e5e5', marginBottom: 6 }}>
-        0.0000 <span style={{ fontSize: 14, fontWeight: 400, color: '#666' }}>$0.00</span>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '2fr 0.8fr 1fr 0.8fr',
-        gap: 4,
-        padding: '4px 8px',
-        fontSize: 10,
-        color: '#666',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        borderBottom: '1px solid #1a1a1a',
-        marginBottom: 4,
-      }}>
-        <span>Pair Info</span>
-        <span style={{ textAlign: 'center' }}>Trend</span>
-        <span style={{ textAlign: 'right' }}>MC / Liq</span>
-        <span style={{ textAlign: 'right' }}>Vol</span>
-      </div>
-
-      {loading && tokens.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#666' }}>
-          <div style={{ display: 'inline-block', width: 24, height: 24, border: '2px solid #1a1a1a', borderTop: '2px solid #00C805', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-          <div style={{ marginTop: 8, fontSize: 13 }}>Loading tokens...</div>
-        </div>
-      ) : tokens.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#666', fontSize: 14 }}>
-          No tokens found
-        </div>
-      ) : (
-        <>
-          {tokens.slice(0, 20).map((token) => {
-            const change = token.change || 0;
-            const price = parseFloat(token.priceUsd || '0');
-            const mcap = parseFloat(token.mcap || '0');
-            const liq = parseFloat(token.liquidity || '0');
-            const vol = parseFloat(token.volume24h || '0');
-            const age = token.age || 0;
-
-            // Generate avatar color from tokenCa
-            const color = token.tokenCa ? getColorFromAddress(token.tokenCa) : '#2a2a2a';
-            // Convert HSL to hex for background
-            // We'll use HSL directly in the style
-            const textColor = '#e5e5e5'; // always white on colored background
-
-            return (
-              <div
-                key={token.pairAddress}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 0.8fr 1fr 0.8fr',
-                  gap: 4,
-                  padding: '6px 8px',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  alignItems: 'center',
-                  borderBottom: '1px solid #111',
-                }}
-                onClick={() => onSelectToken(token.tokenCa)}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#1a1a1a'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {/* Pair Info with avatar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    background: token.logo ? 'transparent' : color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: textColor,
-                    fontSize: 10,
-                    fontWeight: 700,
-                  }}>
-                    {token.logo ? (
-                      <img
-                        src={token.logo}
-                        alt={token.symbol}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          // fallback to colored letter
-                          const parent = (e.target as HTMLImageElement).parentElement;
-                          if (parent) {
-                            parent.style.background = color;
-                            parent.innerHTML = token.symbol?.charAt(0) || '?';
-                          }
-                        }}
-                      />
-                    ) : (
-                      token.symbol?.charAt(0) || '?'
-                    )}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e5e5' }}>{token.symbol || '???'}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#666' }}>
-                      <span>{getAgeLabel(age)}</span>
-                      <span>•</span>
-                      <span style={{ color: '#444' }}>{Math.floor(Math.random() * 100)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Trend */}
-                <div style={{ textAlign: 'center', fontSize: 13, color: getChangeColor(change) }}>
-                  {change > 0 ? <ArrowUp size={14} /> : change < 0 ? <ArrowDown size={14} /> : '—'}
-                  <div style={{ fontSize: 11, fontWeight: 500 }}>
-                    {change > 0 ? '+' : ''}{change.toFixed(2)}%
-                  </div>
-                </div>
-
-                {/* MC / Liq */}
-                <div style={{ textAlign: 'right', fontSize: 12, color: '#e5e5e5' }}>
-                  <div>${formatNumber(mcap)}</div>
-                  <div style={{ fontSize: 10, color: '#666' }}>${formatNumber(liq)}</div>
-                </div>
-
-                {/* Vol */}
-                <div style={{ textAlign: 'right', fontSize: 12, color: '#e5e5e5' }}>
-                  <div>${formatNumber(vol)}</div>
-                  <div style={{ fontSize: 10, color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
-                    <span>$3.4</span>
-                    <ArrowUp size={10} color="#00C805" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {loading && tokens.length > 0 && (
-            <div style={{ textAlign: 'center', padding: '4px', color: '#666', fontSize: 11 }}>
-              Updating...
+              flexShrink: 0,
+            }}>
+              {token.logo ? (
+                <img
+                  src={token.logo}
+                  alt={token.symbol}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const parent = (e.target as HTMLImageElement).parentElement;
+                    if (parent) {
+                      parent.textContent = token.symbol?.charAt(0) || '?';
+                    }
+                  }}
+                />
+              ) : (
+                token.symbol?.charAt(0) || '?'
+              )}
             </div>
-          )}
-        </>
-      )}
+
+            {/* Info */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 600, fontSize: '13px', color: '#e5e5e5' }}>{token.symbol || '???'}</span>
+                <span style={{ fontSize: '10px', color: '#666' }}>
+                  {getTimeAgo(age * 60 * 1000)} • {token.dexId}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', fontSize: '10px', color: '#666', flexWrap: 'wrap' }}>
+                <span>MC ${formatNumber(mcap)}</span>
+                <span>Liq ${formatNumber(liq)}</span>
+                <span>Vol ${formatNumber(vol)}</span>
+                <span style={{ color: change >= 0 ? '#00C805' : '#FF3B30', fontWeight: 500 }}>
+                  {change > 0 ? '+' : ''}{change.toFixed(2)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Price */}
+            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#e5e5e5', whiteSpace: 'nowrap' }}>
+              ${price < 0.01 ? price.toFixed(6) : price.toFixed(4)}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
