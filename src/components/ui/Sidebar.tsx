@@ -3,17 +3,18 @@
 import { Home, BarChart2, Search, User, Settings } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'discover' | 'trade' | 'scanner' | 'portfolio';
-  onTabChange: (tab: 'discover' | 'trade' | 'scanner' | 'portfolio') => void;
+  activeTab: 'discover' | 'pulse' | 'tracker' | 'portfolio' | 'settings';
+  onTabChange: (tab: 'discover' | 'pulse' | 'tracker' | 'portfolio' | 'settings') => void;
   onSettings: () => void;
 }
 
 export default function Sidebar({ activeTab, onTabChange, onSettings }: SidebarProps) {
   const tabs = [
     { id: 'discover', label: 'Discover', icon: Home },
-    { id: 'trade', label: 'Trade', icon: BarChart2 },
-    { id: 'scanner', label: 'Scanner', icon: Search },
+    { id: 'pulse', label: 'Pulse', icon: BarChart2 },
+    { id: 'tracker', label: 'Tracker', icon: Search },
     { id: 'portfolio', label: 'Portfolio', icon: User },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ] as const;
 
   return (
@@ -48,7 +49,13 @@ export default function Sidebar({ activeTab, onTabChange, onSettings }: SidebarP
         return (
           <button
             key={tab.id}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => {
+              if (tab.id === 'settings') {
+                onSettings();
+              } else {
+                onTabChange(tab.id);
+              }
+            }}
             style={{
               width: 48,
               height: 48,
@@ -72,24 +79,6 @@ export default function Sidebar({ activeTab, onTabChange, onSettings }: SidebarP
       })}
 
       <div style={{ flex: 1 }} />
-
-      <button
-        onClick={onSettings}
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 12,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'transparent',
-          color: '#666',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        <Settings size={22} strokeWidth={1.5} />
-      </button>
     </div>
   );
 }
