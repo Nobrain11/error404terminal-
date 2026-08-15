@@ -17,10 +17,4 @@ export interface Token {
     twitter?: string;
     telegram?: string;
   };
-  volume?: {
-    h24: number;
-  };
-  priceChange?: {
-    h24: number;
-  };
 }
