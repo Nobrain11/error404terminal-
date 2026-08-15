@@ -8,8 +8,8 @@ import BottomNav from './ui/BottomNav';
 import Sidebar from './ui/Sidebar';
 import TickerTape from './ui/TickerTape';
 import DiscoverPage from './pages/DiscoverPage';
-import TradePage from './pages/TradePage';
-import ScannerPage from './pages/ScannerPage';
+import PulsePage from './pages/PulsePage';
+import TrackerPage from './pages/TrackerPage';
 import PortfolioPage from './pages/PortfolioPage';
 import SettingsPage from './pages/SettingsPage';
 import TokenDetail from './pages/TokenDetail';
@@ -31,7 +31,8 @@ export default function Terminal() {
       setActiveTab(tab);
     }
     if (token) {
-      setSelectedToken(token);
+      setTradeToken(token);
+      setActiveTab('pulse');
     }
   }, []);
 
@@ -50,10 +51,10 @@ export default function Terminal() {
       }} />;
     }
     if (activeTab === 'pulse') {
-      return <TradePage initialTokenCa={tradeToken || undefined} />;
+      return <PulsePage initialTokenCa={tradeToken || undefined} />;
     }
     if (activeTab === 'tracker') {
-      return <ScannerPage />;
+      return <TrackerPage />;
     }
     if (activeTab === 'portfolio') {
       return <PortfolioPage />;
