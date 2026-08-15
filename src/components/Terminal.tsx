@@ -18,8 +18,7 @@ export default function Terminal() {
   const { status, user, walletAddress, connect, disconnect } = useAuth();
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
-  // Read URL params
-  const [activeTab, setActiveTab] = useState<'discover' | 'trade' | 'scanner' | 'portfolio'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'pulse' | 'tracker' | 'portfolio' | 'settings'>('discover');
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [tradeToken, setTradeToken] = useState<string | null>(null);
@@ -28,39 +27,42 @@ export default function Terminal() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     const token = params.get('token');
-    if (tab === 'trade') {
-      setActiveTab('trade');
-      if (token) setTradeToken(token);
-    } else if (tab === 'discover' || tab === 'scanner' || tab === 'portfolio') {
+    if (tab === 'discover' || tab === 'pulse' || tab === 'tracker' || tab === 'portfolio' || tab === 'settings') {
       setActiveTab(tab);
     }
-    if (token && !tab) {
-      // If only token param, open token detail
+    if (token) {
       setSelectedToken(token);
     }
   }, []);
 
   const handleSelectToken = (ca: string) => {
     setSelectedToken(ca);
-    setTradeToken(null); // clear trade token when opening detail
+    setTradeToken(null);
   };
   const handleCloseDetail = () => setSelectedToken(null);
 
   const renderMainContent = () => {
     if (activeTab === 'discover') {
       return <DiscoverPage onSelectToken={handleSelectToken} onTradeToken={(ca) => {
-        setActiveTab('trade');
+        setActiveTab('pulse');
         setTradeToken(ca);
         setSelectedToken(null);
       }} />;
     }
-    if (activeTab === 'trade') {
+    if (activeTab === 'pulse') {
       return <TradePage initialTokenCa={tradeToken || undefined} />;
     }
-    if (activeTab === 'scanner') return <ScannerPage />;
-    if (activeTab === 'portfolio') return <PortfolioPage />;
+    if (activeTab === 'tracker') {
+      return <ScannerPage />;
+    }
+    if (activeTab === 'portfolio') {
+      return <PortfolioPage />;
+    }
+    if (activeTab === 'settings') {
+      return <SettingsPage onClose={() => setShowSettings(false)} />;
+    }
     return <DiscoverPage onSelectToken={handleSelectToken} onTradeToken={(ca) => {
-      setActiveTab('trade');
+      setActiveTab('pulse');
       setTradeToken(ca);
       setSelectedToken(null);
     }} />;
@@ -79,7 +81,7 @@ export default function Terminal() {
   // Mobile layout
   if (!isDesktop) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0a0a0b', maxWidth: 480, margin: '0 auto', paddingBottom: 70 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0a0a0b', maxWidth: 480, margin: '0 auto', paddingBottom: 60 }}>
         <Header />
         <TickerTape />
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
@@ -90,7 +92,6 @@ export default function Terminal() {
           )}
         </div>
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-        {showSettings && <SettingsPage onClose={() => setShowSettings(false)} />}
       </div>
     );
   }
@@ -147,12 +148,7 @@ export default function Terminal() {
             borderRight: selectedToken ? '1px solid #1a1a1a' : 'none',
             transition: 'flex 0.3s ease',
           }}>
-            {selectedToken ? (
-              // When detail is open, we still show the main content list on the left
-              renderMainContent()
-            ) : (
-              renderMainContent()
-            )}
+            {selectedToken ? renderMainContent() : renderMainContent()}
           </div>
 
           {selectedToken && (
@@ -168,14 +164,6 @@ export default function Terminal() {
           )}
         </div>
       </div>
-
-      {showSettings && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ width: 400, maxWidth: '90%', background: '#0a0a0b', borderLeft: '1px solid #1a1a1a', padding: 20, overflowY: 'auto' }}>
-            <SettingsPage onClose={() => setShowSettings(false)} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
