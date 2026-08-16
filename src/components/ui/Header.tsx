@@ -71,7 +71,7 @@ export default function Header({ onSearch }: HeaderProps) {
         }}>🔍</span>
         <input
           type="text"
-          placeholder="Search..."
+          placeholder={isMobile ? "Search..." : "Search token or contract..."}
           value={search}
           onChange={handleSearchChange}
           style={{
@@ -133,7 +133,7 @@ export default function Header({ onSearch }: HeaderProps) {
             whiteSpace: 'nowrap',
           }}
         >
-          {status === 'connected' ? (isMobile ? 'Wallet' : 'Wallet') : status === 'connecting' ? '...' : 'Connect'}
+          {status === 'connected' ? 'Wallet' : status === 'connecting' ? '...' : 'Connect'}
         </button>
 
         {isMobile && (
