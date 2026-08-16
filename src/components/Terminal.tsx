@@ -74,7 +74,7 @@ export default function Terminal() {
           flexDirection: 'column',
           alignItems: 'center',
           paddingTop: '8px',
-          gap: '2px',
+          gap: '4px',
           flexShrink: 0,
           overflowY: 'auto',
         }}>
@@ -106,18 +106,17 @@ export default function Terminal() {
                   cursor: 'pointer',
                   fontSize: '18px',
                   gap: '2px',
-                  transition: 'background 0.15s',
                 }}
                 title={cat.label}
               >
-                <span style={{ fontSize: '18px' }}>{cat.icon}</span>
+                <span>{cat.icon}</span>
                 <span style={{
                   fontSize: '7px',
                   textTransform: 'uppercase',
                   letterSpacing: '0.3px',
                   color: isActive ? '#00C805' : '#666',
                 }}>
-                  {cat.label.length > 6 ? cat.label.slice(0, 6) : cat.label}
+                  {cat.label}
                 </span>
               </button>
             );
@@ -126,10 +125,9 @@ export default function Terminal() {
 
         {/* Left feed */}
         <div style={{
-          flex: isDesktop ? '0 0 380px' : isTablet ? '0 0 320px' : '1',
+          flex: isDesktop ? '0 0 400px' : isTablet ? '0 0 340px' : '1',
           overflowY: 'auto',
           borderRight: '1px solid #1a1a1a',
-          padding: '8px 0',
           backgroundColor: '#0f0f10',
         }}>
           <DiscoverFeed
@@ -144,7 +142,7 @@ export default function Terminal() {
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '12px 16px',
+          padding: '16px',
           backgroundColor: '#0a0a0b',
           minWidth: 0,
         }}>
@@ -160,7 +158,7 @@ export default function Terminal() {
           <div style={{
             flex: '0 0 340px',
             borderLeft: '1px solid #1a1a1a',
-            padding: '12px 16px',
+            padding: '16px',
             overflowY: 'auto',
             backgroundColor: '#0f0f10',
           }}>
@@ -173,7 +171,7 @@ export default function Terminal() {
       {isTablet && (
         <div style={{
           borderTop: '1px solid #1a1a1a',
-          height: '60px',
+          height: '56px',
           overflow: 'hidden',
           backgroundColor: '#0f0f10',
         }}>
